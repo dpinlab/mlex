@@ -29,9 +29,19 @@ class LacciAnalysis:
         })
 
         # df_descriptive.loc[df_descriptive['I-a'].notna() & df_descriptive['I-d'].isna(), COL_TYPOLOGY] = 'I-a'
-        df_descriptive.loc[df_descriptive['I-d'].notna(), COL_TYPOLOGY] = 'I-d'
+        
+        #df_descriptive.loc[df_descriptive['I-d']==1, COL_TYPOLOGY] = 'I-d'
+        
         # df_descriptive.loc[df_descriptive['I-d'].notna() & df_descriptive['I-a'].notna(), COL_TYPOLOGY] = 'I-a AND I-d'
 
+        df_descriptive[COL_TYPOLOGY] = np.where(df_descriptive['I-d'] == 1, 'I-d', df_descriptive[COL_TYPOLOGY])
+        if 'I-e' in df_descriptive.columns:
+            df_descriptive[COL_TYPOLOGY] = np.where(df_descriptive['I-e'] == 1, 'I-e', df_descriptive[COL_TYPOLOGY])
+        
+        if 'IV-n' in df_descriptive.columns:
+            df_descriptive[COL_TYPOLOGY] = np.where(df_descriptive['IV-n'] == 1, 'IV-n', df_descriptive[COL_TYPOLOGY])
+
+        
         df_descriptive = df_descriptive.pivot_table(index=None, columns=COL_TYPOLOGY, values=[COL_TRANSACTIONS, COL_ACCOUNT, COL_INDIVIDUALS], aggfunc=pd.Series.nunique)
         return df_descriptive
     
