@@ -1,27 +1,41 @@
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import init
 from abc import ABC
 
 class BaseMLEXModule(nn.Module, ABC):
     def __init__(self, module,input_size, hidden_size, num_layers, num_classes):
-        super(module,self).__init__()
+        super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.num_classes = num_classes
-
+        
+    def init_parameters(self):
+        for module in self.model._modules.items():
+            _, layers = module 
+            weights = layers._all_weights
+            for layer_weight in weights:
+                for weight in layer_weight:
+                    if 'weight_ih' in weight:
+                        init.xavier_uniform_(getattr(layers,weight))
+                    elif 'weight_hh' in weight:
+                        init.orthogonal_(getattr(layers,weight))
+                    elif 'bias' in weight:
+                        init.zeros_(getattr(layers,weight))
+                        
     def forward(self,x):
-        ht = self.model(x)
-        z = self.output_layer
-        return F.sigmoid(z)
+        logits = self.model(x)
+        return F.sigmoid(logits)
 
 class RNNModule(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(self, RNNModule, input_size, hidden_size, num_layers, num_classes)
+        super().__init__(RNNModule, input_size, hidden_size, num_layers, num_classes)
         self.model = nn.Sequential(
         nn.RNN(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
         nn.Linear(in_features=hidden_size, out_features=num_classes)
         )
+        self.init_parameters()
 
 
 class LSTMModule(BaseMLEXModule):
@@ -32,6 +46,7 @@ class LSTMModule(BaseMLEXModule):
         nn.Linear(in_features=hidden_size, out_features=num_classes)
         )
         
+        
 class GRUModule(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
         super().__init__(self, RNNModule, input_size, hidden_size, num_layers, num_classes)
@@ -39,3 +54,10 @@ class GRUModule(BaseMLEXModule):
         nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
         nn.Linear(in_features=hidden_size, out_features=num_classes)
         )
+        
+        
+        
+        
+if __name__ == '__main__':
+    mlex_component = RNNModule(input_size=10,hidden_size=2,num_layers=2,num_classes=1)
+    
