@@ -45,6 +45,7 @@ class LSTMModule(BaseMLEXModule):
         nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
         nn.Linear(in_features=hidden_size, out_features=num_classes)
         )
+        self.init_parameters()
         
         
 class GRUModule(BaseMLEXModule):
@@ -54,6 +55,7 @@ class GRUModule(BaseMLEXModule):
         nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
         nn.Linear(in_features=hidden_size, out_features=num_classes)
         )
+        self.init_parameters()
         
         
         
