@@ -9,7 +9,7 @@ from models import RNNModule
 class MLEXComponent(ABC, nn.Module):
     
     @abstractmethod
-    def optimize_module(self):
+    def optimize_module(self, x, target, loss_fn=None):
         pass
     
     
@@ -18,9 +18,9 @@ class MLEXComposite(MLEXComponent):
         super(MLEXComposite,self).__init__()
         self.loss_fn = F.binary_cross_entropy
         
-    def optimize_module(self):
+    def optimize_module(self, x, target, loss_fn=None):
         for child in self.children():
-            child.optimize_module(self.loss_fn)
+            child.optimize_module(target, x, loss_fn=self.loss_fn)        
     
     def forward(self,x):
         results = []
@@ -33,15 +33,20 @@ class MLEXLeafComponent(MLEXComponent):
         super().__init__()
         self.model = model
         self.optimizer = optimizer(params=self.parameters(), lr=.001, alpha=.9, eps=1e-07)
-    
+        
     def forward(self, x):
         return self.model.forward(x)
     
     def parameters(self):
         return self.model.parameters()
     
-    def optimize_module(self, loss_fn):
-        pass
+    def optimize_module(self,x, target, loss_fn):
+        self.optimizer.zero_grad()
+        output = self.forward(x)
+        loss = loss_fn(output, target)
+        loss.backward()
+        self.optimizer.step()
+
 
 
 if __name__ =='__main__':
