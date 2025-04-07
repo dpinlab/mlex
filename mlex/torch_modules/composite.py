@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Optimizer
 from abc import ABC, abstractmethod
-from models import RNNModule
+from models import (RNNModule, LSTMModule, GRUModule)
 class MLEXComponent(ABC, nn.Module):
     
     @abstractmethod
@@ -66,10 +66,16 @@ if __name__ =='__main__':
     X_test, y_test = series[9000:, :n_steps], series[9000:, -1]
     
     rnn = RNNModule(input_size=1, hidden_size=3,num_layers=1,num_classes=1)
+    lstm = LSTMModule(input_size=1, hidden_size=3,num_layers=1,num_classes=1)
+    gru = GRUModule(input_size=1, hidden_size=3,num_layers=1,num_classes=1)
     leaf1 = MLEXLeafComponent(torch.optim.RMSprop, model=rnn)
+    leaf2 = MLEXLeafComponent(torch.optim.RMSprop, model=lstm)
+    leaf3 = MLEXLeafComponent(torch.optim.RMSprop, model=gru)
     composite = MLEXComposite()
     composite.add_module(name='leaf1',module=leaf1)
-    print(composite.forward(torch.from_numpy(X_train)))
+    composite.add_module(name='leaf2',module=leaf2)
+    composite.add_module(name='leaf3',module=leaf3)
+    print(len(composite.forward(torch.from_numpy(X_train))))
     
     
     

@@ -29,8 +29,8 @@ class BaseMLEXModule(nn.Module, ABC):
                         init.zeros_(getattr(layers,weight))
                         
     def forward(self,x):
-        hh = self.model(x)
-        logits = self.linear(hh[1])
+        output, h_t = self.model(x)
+        logits = self.linear(output)
         return F.sigmoid(logits)
 
 class RNNModule(BaseMLEXModule):
@@ -44,7 +44,7 @@ class RNNModule(BaseMLEXModule):
 
 class LSTMModule(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(self, RNNModule, input_size, hidden_size, num_layers, num_classes)
+        super().__init__(RNNModule, input_size, hidden_size, num_layers, num_classes)
         self.model = nn.Sequential(
         nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
         )
@@ -53,7 +53,7 @@ class LSTMModule(BaseMLEXModule):
         
 class GRUModule(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(self, RNNModule, input_size, hidden_size, num_layers, num_classes)
+        super().__init__(RNNModule, input_size, hidden_size, num_layers, num_classes)
         self.model = nn.Sequential(
         nn.GRU(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
         )
