@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 from abc import ABC
+import keras
 
 class BaseMLEXModule(nn.Module, ABC):
     def __init__(self, module,input_size, hidden_size, num_layers, num_classes):
@@ -29,7 +30,7 @@ class BaseMLEXModule(nn.Module, ABC):
                         
     def forward(self,x):
         hh = self.model(x)
-        logits = self.linear(hh)
+        logits = self.linear(hh[1])
         return F.sigmoid(logits)
 
 class RNNModule(BaseMLEXModule):
