@@ -20,7 +20,7 @@ class MLEXComposite(MLEXComponent):
         
     def optimize_module(self, x, target, loss_fn=None):
         for child in self.children():
-            child.optimize_module(target, x, loss_fn=self.loss_fn)        
+            child.optimize_module(x, target, loss_fn=self.loss_fn)        
     
     def forward(self,x):
         results = []
@@ -44,6 +44,7 @@ class MLEXLeafComponent(MLEXComponent):
         self.optimizer.zero_grad()
         output = self.forward(x)
         loss = loss_fn(output, target)
+        print(loss)
         loss.backward()
         self.optimizer.step()
 
@@ -51,20 +52,39 @@ class MLEXLeafComponent(MLEXComponent):
 
 if __name__ =='__main__':
 
-    def generate_time_series(batch_size, n_steps):
-        freq1, freq2, offsets1, offsets2 = np.random.rand(4, batch_size, 1)
-        time = np.linspace(0, 1, n_steps)
-        series = 0.5 * np.sin((time - offsets1) * (freq1 * 10 + 10)) # wave 1
-        series += 0.2 * np.sin((time - offsets2) * (freq2 * 20 + 20)) # + wave 2
-        series += 0.1 * (np.random.rand(batch_size, n_steps) - 0.5) # + noise
-        return series[..., np.newaxis].astype(np.float32)
+    def generate_sequence_classification_data(num_sequences=10, seq_length=20, input_dim=1, noise_level=0.1):
+        X = np.zeros((num_sequences, seq_length, input_dim))
+        y = np.zeros((num_sequences, seq_length, 1))
+
+        for i in range(num_sequences):
+            # Randomly decide if this sequence will be positive (1) or negative (0)
+            sequence_class = np.random.randint(0, 2)
+
+            # Create a base signal that's different for positive vs negative sequences
+            if sequence_class == 1:
+                # Positive sequence pattern (e.g., increasing trend)
+                base_signal = np.linspace(0, 1, seq_length)
+            else:
+                # Negative sequence pattern (e.g., decreasing trend)
+                base_signal = np.linspace(1, 0, seq_length)
+
+            # Add some noise
+            noise = noise_level * np.random.randn(seq_length)
+            signal = base_signal + noise
+
+            # Store the sequence and labels
+            X[i, :, 0] = signal  # Assuming input_dim=1
+            y[i, :, 0] = sequence_class  # Same label for all timesteps
+
+        # Convert to PyTorch tensors with correct dtype
+        X_tensor = torch.from_numpy(X).float()
+        y_tensor = torch.from_numpy(y).float()
+
+        return X_tensor, y_tensor
     
-    n_steps = 50
-    series = generate_time_series(10000, n_steps + 1)
-    X_train, y_train = series[:7000, :n_steps], series[:7000, -1]
-    X_valid, y_valid = series[7000:9000, :n_steps], series[7000:9000, -1]
-    X_test, y_test = series[9000:, :n_steps], series[9000:, -1]
-    
+    X_train, y_train = generate_sequence_classification_data(num_sequences=1000, seq_length=20)
+    X_val, y_val = generate_sequence_classification_data(num_sequences=200, seq_length=20)
+    X_test, y_test = generate_sequence_classification_data(num_sequences=200, seq_length=20)
     rnn = RNNModule(input_size=1, hidden_size=3,num_layers=1,num_classes=1)
     lstm = LSTMModule(input_size=1, hidden_size=3,num_layers=1,num_classes=1)
     gru = GRUModule(input_size=1, hidden_size=3,num_layers=1,num_classes=1)
@@ -72,11 +92,15 @@ if __name__ =='__main__':
     leaf2 = MLEXLeafComponent(torch.optim.RMSprop, model=lstm)
     leaf3 = MLEXLeafComponent(torch.optim.RMSprop, model=gru)
     composite = MLEXComposite()
+    data = X_train
+    target = y_train    
     composite.add_module(name='leaf1',module=leaf1)
     composite.add_module(name='leaf2',module=leaf2)
     composite.add_module(name='leaf3',module=leaf3)
-    print(len(composite.forward(torch.from_numpy(X_train))))
-    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    composite.to(device=device)
+    #print(len(composite.forward(data)))
+    composite.optimize_module(x=data, target=target)
     
     
 

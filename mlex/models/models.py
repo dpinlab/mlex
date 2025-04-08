@@ -32,7 +32,7 @@ class BaseModel(abc.ABC):
     def predict(self,X, y=None):
         return self.model.predict(X)
 
-class SimpleRNNModel(BaseModel):
+class SimpleRNNModel(BaseModel):    
 
     def __init__(self, input_shape) -> None:
         super().__init__()
