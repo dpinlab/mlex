@@ -16,6 +16,7 @@ from mlex import (
     SimpleRNNModel,
     SimpleLSTMModel,
     SimpleGruModel,
+    SimpleBiLSTMModel,
 )
 
 from mlex import (
@@ -65,15 +66,16 @@ for sequence_length in sequence_lengths:
 
     data_train = data_train_full.take(train_size)
     data_val = data_train_full.skip(train_size)
-
+    
+    model_bilstm = SimpleBiLSTMModel(X_train.shape)
     model_rnn = SimpleRNNModel(X_train.shape)
     model_lstm = SimpleLSTMModel(X_train.shape)
     model_gru = SimpleGruModel(X_train.shape)
     callback = keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
 
     pipelines = []
-    models = [model_rnn, model_lstm, model_gru]
-    # models = [model]
+    models = [model_bilstm, model_rnn, model_lstm, model_gru]
+    #  models = [model]
 
     for m in models:
         pipeline = SimplePipeline(final_model=m.get_model())
@@ -92,12 +94,12 @@ for sequence_length in sequence_lengths:
         y_true, y_pred = get_y_pred_actual(y_pred_score, y_test, sequence_length)
         list_ys_true_pred.append((y_true, y_pred, y_pred_score))
 
-    names = ['RNN', 'LSTM', 'GRU']
+    names = [ 'BILSTM','RNN', 'LSTM', 'GRU']
     name_cycler = cycle(names)
 
     plotter = Plotter()
     for y_true, y_pred, y_pred_score in list_ys_true_pred:
-        plotter.plot_matrix(y_true, y_pred,name_cycler, filename=f"confusion_{sequence_length}")
+        plotter.plot_matrix(y_true, y_pred,name_cycler, filename=f"confusion_{sequence_length}_2layers_{name_cycler}")
 
 
 
@@ -114,7 +116,7 @@ for sequence_length in sequence_lengths:
     ax.set_ylabel("True Positive Rate (Sensitivity)", fontsize=16)
     ax.set_title(f"Receiver Operating Characteristic \n {title}", fontsize=18)
     ax.legend(loc="lower right")
-    plt.savefig(f"roc_{sequence_length}.pdf")
+    plt.savefig(f"roc_{sequence_length}_2layers_{name_cycler}.pdf")
 
     plt.show()
 
@@ -146,6 +148,7 @@ for sequence_length in sequence_lengths:
         ci = f'{round(roc_mean, 2)} {round(roc_lb, 2), round(roc_up, 2)}'
         cis.append(ci)
 
+    print(f"2 Camadas {name_cycler}")
     print(cis)
     df_ci = pd.DataFrame({
             "Model": names,

@@ -40,7 +40,7 @@ class SimpleRNNModel(BaseModel):
         self.model = keras.models.Sequential([
             # keras.layers.SimpleRNN(16,  return_sequences=True, input_shape=self.input_shape),
             # keras.layers.SimpleRNN(16,  return_sequences=True, input_shape=self.input_shape),
-            #keras.layers.SimpleRNN(10, return_sequences=True ,input_shape=self.input_shape),
+            keras.layers.SimpleRNN(10, return_sequences=True ,input_shape=self.input_shape),
             keras.layers.SimpleRNN(10,),
             keras.layers.Dense(1, activation='sigmoid')
         ])    
@@ -57,7 +57,7 @@ class SimpleLSTMModel(BaseModel):
         self.model = tf.keras.Sequential([
             # tf.keras.layers.LSTM(16, return_sequences=True, input_shape=self.input_shape),
             #  tf.keras.layers.LSTM(16),
-            #tf.keras.layers.LSTM(10,return_sequences=True, input_shape=self.input_shape),
+            tf.keras.layers.LSTM(10,return_sequences=True, input_shape=self.input_shape),
             tf.keras.layers.LSTM(10,),
             tf.keras.layers.Dense(1, activation='sigmoid')
         ])
@@ -73,7 +73,19 @@ class SimpleGruModel(BaseModel):
         self.model = tf.keras.Sequential([
             # tf.keras.layers.GRU(10, return_sequences=True, input_shape = self.input_shape),
             # tf.keras.layers.GRU(16),
-            #tf.keras.layers.GRU(10,return_sequences=True, input_shape = self.input_shape),
+            tf.keras.layers.GRU(10,return_sequences=True, input_shape = self.input_shape),
             tf.keras.layers.GRU(10, ),
+            tf.keras.layers.Dense(1,activation='sigmoid')
+        ])
+
+class SimpleBiLSTMModel(BaseModel):
+    def __init__(self,input_shape)-> None:
+        super().__init__()
+        self.input_shape = input_shape
+
+    def build_model(self) ->keras.Sequential:
+        self.model = tf.keras.Sequential([
+            tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(10, return_sequences=True)),
+            tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(10)),
             tf.keras.layers.Dense(1,activation='sigmoid')
         ])
