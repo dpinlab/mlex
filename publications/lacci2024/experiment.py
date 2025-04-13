@@ -34,7 +34,7 @@ from plots import Plotter
 from sklearn import metrics
 import cycler
 
-from publications.lacci2024.analysis import LacciAnalysis
+from mlex.utils.analysis import LacciAnalysis
 
 import scipy.stats as st
 

@@ -1,7 +1,7 @@
 import abc
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from publications.lacci2024.analysis import LacciAnalysis
+from mlex.utils.analysis import LacciAnalysis
 
 
 class BaseSplitStrategy(abc.ABC):
