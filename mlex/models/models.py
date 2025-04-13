@@ -79,3 +79,15 @@ class SimpleGruModel(BaseModel):
             tf.keras.layers.GRU(10, ),
             tf.keras.layers.Dense(1,activation='sigmoid')
         ])
+
+class SimpleBiLSTMModel(BaseModel):
+    def __init__(self,input_shape)-> None:
+        super().__init__()
+        self.input_shape = input_shape
+
+    def build_model(self) ->keras.Sequential:
+        self.model = tf.keras.Sequential([
+            tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(10, return_sequences=True)),
+            tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(10)),
+            tf.keras.layers.Dense(1,activation='sigmoid')
+        ])
