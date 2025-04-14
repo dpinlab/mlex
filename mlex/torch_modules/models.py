@@ -44,7 +44,7 @@ class RNNModule(BaseMLEXModule):
 
 class LSTMModule(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(RNNModule, input_size, hidden_size, num_layers, num_classes)
+        super().__init__(LSTMModule, input_size, hidden_size, num_layers, num_classes)
         self.model = nn.Sequential(
         nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
         )
@@ -53,9 +53,18 @@ class LSTMModule(BaseMLEXModule):
         
 class GRUModule(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(RNNModule, input_size, hidden_size, num_layers, num_classes)
+        super().__init__(GRUModule, input_size, hidden_size, num_layers, num_classes)
         self.model = nn.Sequential(
         nn.GRU(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
+        )
+        self.init_parameters()
+        
+        
+class BILSTMModule(BaseMLEXModule):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super().__init__(BILSTMModule, input_size, hidden_size, num_layers, num_classes)
+        self.model = nn.Sequential(
+        nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, bidirectional=True),
         )
         self.init_parameters()
         
