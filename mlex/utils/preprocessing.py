@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+from mlex import CompositeTranformer
 class PreProcessing:
 
     def __init__(self,df):
@@ -8,7 +8,7 @@ class PreProcessing:
         
 
     def get_X_y(self):
-            from mlex import CompositeTranformer
+            
             df = self.df
             columns_num = [
                 'DIA_LANCAMENTO', 
@@ -25,6 +25,7 @@ class PreProcessing:
             tranformer = CompositeTranformer(
             numeric_features=columns_num,
             categorical_features=columns_cat)
+            
             X = tranformer.transform(df)
             # X = df[np.concatenate([columns_num, columns_cat])].values
             target = ['I-d']
