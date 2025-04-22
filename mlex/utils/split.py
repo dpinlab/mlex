@@ -5,11 +5,12 @@ from mlex.utils.preprocessing import PreProcessing
 
 
 class BaseSplitStrategy(abc.ABC):
-    def __init__(self, path, X, y) -> None:
+    def __init__(self, path, X = None, y = None) -> None:
+        self.df = df = pd.read_csv(path, delimiter=';', decimal=',')
         super().__init__()
         self.X = X
         self.y = y
-        self.df = pd.read_csv(path, delimiter=';')
+       
 
     @abc.abstractmethod
     def train_test_split(self):
@@ -55,11 +56,11 @@ class FeatureStratifiedSplit(BaseSplitStrategy):
         train_df = train_df.sort_values(by=column_to_stratify).reset_index(drop=True)
         test_df = test_df.sort_values(by=column_to_stratify).reset_index(drop=True)
 
-        lacci_analysis_train = PreProcessing(train_df)
-        lacci_analysis_test = PreProcessing(test_df)
+        train = PreProcessing(train_df)
+        test = PreProcessing(test_df)
 
-        X_train, y_train = lacci_analysis_train.get_X_y()
-        X_test, y_test = lacci_analysis_test.get_X_y()
+        X_train, y_train = train.get_X_y()
+        X_test, y_test = test.get_X_y()
 
         return X_train, X_test, y_train, y_test
 

@@ -6,5 +6,6 @@ __ALL__ = [
     NumericalTransfomer,
     CompositeTranformer,
     EmbeedinglTransfomer,
-    SequenceTransfomer
+    SequenceTransformer,
+    SequenceDataset
 ]

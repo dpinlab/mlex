@@ -15,19 +15,19 @@ from sklearn.pipeline import (
     FeatureUnion
 ) 
 from functools import reduce
-from mlex import (
+from mlex.features import (
     NumericalTransfomer,
     CategoricalOneHotTransfomer,
     CompositeTranformer
 )
 
-from mlex import (
-    SequenceTransfomer
+from mlex.features import (
+    SequenceTransformer
 )
 
 
 from sklearn.metrics import confusion_matrix
-from mlex.utils.splits import PastFutureSplit
+from mlex.utils.split import PastFutureSplit
 
 from mlex.models.models import SimpleRNNModel
 
@@ -71,7 +71,7 @@ class SimplePipeline(BaseEstimator, ClassifierMixin):
     
    
     # def make_sequence(self)->None:
-    #     sequence = SequenceTransfomer()
+    #     sequence = SequenceTransformer()
     #     self.X_train = np.array(self.X_train)
     #     self.y_train = np.array(self.y_train)
     #     self.data_train = sequence.transform(
@@ -114,7 +114,7 @@ class SimplePipeline(BaseEstimator, ClassifierMixin):
 
         
         # sequence  = self.make_sequence()
-        sequence = SequenceTransfomer()
+        sequence = SequenceTransformer()
         
         # self.history = self.final_model.fit(self.data_train)
 

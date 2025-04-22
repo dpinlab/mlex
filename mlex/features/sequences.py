@@ -64,6 +64,6 @@ class SequenceTransformer(BaseEstimator, TransformerMixin):
         if timestamps_columns is None:
             timestamps_columns = self.timestamps_columns
 
-        dataset = SequenceDataset(X, y, self.sequence_length, timestamps_columns, column_to_stratify)
+        dataset = SequenceDataset(X, y, self.sequence_length, self.timestamps_columns, self.column_to_stratify)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         return dataloader
