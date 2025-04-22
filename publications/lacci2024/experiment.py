@@ -20,7 +20,7 @@ from mlex import (
 )
 
 from mlex import (
-    SequenceTransfomer
+    SequenceTransformer
 )
 
 import tensorflow as tf
@@ -55,7 +55,7 @@ X_train, X_test, y_train, y_test = split.train_test_split(X, y)
 sequence_lengths = [20, 30, 40, 50]
 for sequence_length in sequence_lengths:
     print(f"\nRodando experimento com sequence_length = {sequence_length}")
-    sequence = SequenceTransfomer(sequence_length=sequence_length)
+    sequence = SequenceTransformer(sequence_length=sequence_length)
     data_test = sequence.transform(X_test, y_test)
 
     data_train_full = sequence.transform(X_train, y_train)
