@@ -8,8 +8,6 @@ class BaseSplitStrategy(abc.ABC):
     def __init__(self, path, X = None, y = None) -> None:
         super().__init__()
         self.df = df = pd.read_csv(path, delimiter=';', decimal=',')
-    
-       
 
     @abc.abstractmethod
     def train_test_split(self):
@@ -42,6 +40,12 @@ class PastFutureSplit(BaseSplitStrategy):
 
     
 class FeatureStratifiedSplit(BaseSplitStrategy):
+
+    def __init__(self, path, X=None, y=None):
+        super().__init__(path, X, y)
+        self.group_test = []
+        self.group_train = []
+
     def train_test_split(self, column_to_stratify = 'CONTA_TITULAR', typology='I-d', test_proportion=.3):
 
         id_counts = self.df[self.df[typology] == 1].groupby(column_to_stratify).size()
@@ -65,6 +69,9 @@ class FeatureStratifiedSplit(BaseSplitStrategy):
 
         train_df = train_df.sort_values(by=column_to_stratify).reset_index(drop=True)
         test_df = test_df.sort_values(by=column_to_stratify).reset_index(drop=True)
+
+        self.group_train = train_df[column_to_stratify].values
+        self.group_test = test_df[column_to_stratify].values    
 
         train = PreProcessing(train_df)
         test = PreProcessing(test_df)
