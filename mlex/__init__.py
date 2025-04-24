@@ -4,4 +4,6 @@ from .models import *
 from .utils import *
 from .scripts import *
 from .publications import *
+from .evaluation import *
 from .torch_modules import *
+
