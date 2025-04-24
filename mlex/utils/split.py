@@ -6,10 +6,9 @@ from mlex.utils.preprocessing import PreProcessing
 
 class BaseSplitStrategy(abc.ABC):
     def __init__(self, path, X = None, y = None) -> None:
-        self.df = df = pd.read_csv(path, delimiter=';', decimal=',')
         super().__init__()
-        self.X = X
-        self.y = y
+        self.df = df = pd.read_csv(path, delimiter=';', decimal=',')
+    
        
 
     @abc.abstractmethod
@@ -19,17 +18,28 @@ class BaseSplitStrategy(abc.ABC):
 
 class PastFutureSplit(BaseSplitStrategy):
     def train_test_split(self,timestamps_columns,proportion=.5):
-
         sorted_indices = self.df.sort_values(by=timestamps_columns).index
-        X_sorted = self.X.loc[sorted_indices].reset_index(drop=True)
-        y_sorted = self.y.loc[sorted_indices].reset_index(drop=True)
+        df_sorted = self.df.iloc[sorted_indices]
 
-        mid = int(proportion *len(self.X))
-        X_train = X_sorted[:mid]
-        y_train = y_sorted[:mid]
-        X_test = X_sorted[mid:-1]
-        y_test = y_sorted[mid:-1]
+        mid = int(proportion *len(df_sorted))
+        train_df = df_sorted.iloc[:mid]
+        test_df =  df_sorted.iloc[mid:-1] 
+                
+        common_values = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
+
+        train_df = train_df[train_df['CNAB'].isin(common_values)]
+        test_df = test_df[test_df['CNAB'].isin(common_values)]
+
+        train = PreProcessing(train_df)
+        test = PreProcessing(test_df)
+
+        X_train, y_train = train.get_X_y()
+        X_test, y_test = test.get_X_y()
+
+        
         return X_train, X_test, y_train, y_test
+    
+
     
 class FeatureStratifiedSplit(BaseSplitStrategy):
     def train_test_split(self, column_to_stratify = 'CONTA_TITULAR', typology='I-d', test_proportion=.3):
@@ -61,6 +71,7 @@ class FeatureStratifiedSplit(BaseSplitStrategy):
 
         X_train, y_train = train.get_X_y()
         X_test, y_test = test.get_X_y()
+
 
         return X_train, X_test, y_train, y_test
 
