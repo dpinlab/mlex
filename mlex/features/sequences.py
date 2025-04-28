@@ -4,17 +4,14 @@ import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class SequenceDataset(Dataset):
-    def __init__(self, X, y, sequence_length, timestamps_columns, column_to_stratify):
+    def __init__(self, X, y, sequence_length,column_to_stratify):
         '''
-            timestamps_columns : array of index of the columns that are timestamps 
-            (in order of sorting priority)
             column_to_stratify : index of column being used to group the sequences
         '''
         self.X = torch.tensor(X, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.float32)
         self.sequence_length = sequence_length
-        self.timestamps_columns = timestamps_columns
-        self.column_to_stratify = X[:, column_to_stratify]
+        self.column_to_stratify = column_to_stratify
 
         self.valid_indices = self._generate_valid_indices()
 
@@ -36,34 +33,26 @@ class SequenceDataset(Dataset):
     def __getitem__(self, idx):
         i = self.valid_indices[idx]
         X_seq = self.X[i:i + self.sequence_length]
-        y_seq = self.y[i + self.sequence_length - 1] 
+        y_seq = self.y[i + self.sequence_length - 1] # seq to vec
 
-        timestamps = X_seq[:, self.timestamps_columns]  
-        sort_idx = np.lexsort(timestamps.T)
-        X_seq_sorted = X_seq[sort_idx]  
-       
+        #timestamps = X_seq[:, self.timestamps_columns]  
+        #sort_idx = np.lexsort(timestamps.T)
+        #X_seq_sorted = X_seq[sort_idx]  
 
-        return X_seq_sorted, y_seq
+        return X_seq, y_seq
 
 class SequenceTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, timestamps_columns, column_to_stratify, sequence_length=10, batch_size=32):
-        '''
-            timestamps_columns : array of index of the columns that are timestamps
-        '''
+    def __init__(self, column_to_stratify, sequence_length=10, batch_size=32):
         self.sequence_length = sequence_length
         self.batch_size = batch_size
-        self.timestamps_columns = timestamps_columns
         self.column_to_stratify = column_to_stratify
 
 
     def fit(self, X, y=None):
         return self
 
-    def transform(self, X, y, timestamps_columns = None):
-        
-        if timestamps_columns is None:
-            timestamps_columns = self.timestamps_columns
-
-        dataset = SequenceDataset(X, y, self.sequence_length, self.timestamps_columns, self.column_to_stratify)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
+    def transform(self, X, y):
+    
+        dataset = SequenceDataset(X, y, self.sequence_length, self.column_to_stratify)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         return dataloader
