@@ -1,93 +1,78 @@
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn import init
+from abc import ABC
 import keras
-import keras.layers
-import keras.optimizers.adam
-import tensorflow as tf
 
-import abc
-
-class BaseModel(abc.ABC):
-
-    @abc.abstractmethod
-    def build_model(self):
-        pass
-    
-    def get_model(self) -> keras.Sequential:
-        self.build_model()
-        self.model.build()  
-        self.compile()
-        return self.model
+class BaseMLEXModule(nn.Module, ABC):
+    def __init__(self, module,input_size, hidden_size, num_layers, num_classes):
+        super().__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.num_classes = num_classes
+        self.linear = nn.Linear(in_features=hidden_size, out_features=num_classes)
         
+    def init_parameters(self):
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
+        for module in self.model._modules.items():
+            _, layers = module 
+            weights = layers._all_weights
+            for layer_weight in weights:
+                for weight in layer_weight:
+                    if 'weight_ih' in weight:
+                        init.xavier_uniform_(getattr(layers,weight))
+                    elif 'weight_hh' in weight:
+                        init.orthogonal_(getattr(layers,weight))
+                    elif 'bias' in weight:
+                        init.zeros_(getattr(layers,weight))
+                        
+    def forward(self,x):
+        output, h_t = self.model(x)
+        logits = self.linear(output)
+        return F.sigmoid(logits)
 
-    def compile(self):
-        self.model.compile(loss='binary_crossentropy',
-              optimizer='rmsprop',
-              metrics=['acc', tf.keras.metrics.AUC()])
-    
-    def summary(self):
-        return self.model.summary()
-    
-    def fit(self, X, y=None, **fit_params):
-        return self.model.fit(X, y, **fit_params)
-    
-    def predict(self,X, y=None):
-        return self.model.predict(X)
+class RNNModule(BaseMLEXModule):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super().__init__(RNNModule, input_size, hidden_size, num_layers, num_classes)
+        self.model = nn.Sequential(
+        nn.RNN(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
+        )
+        self.init_parameters()
 
-class SimpleRNNModel(BaseModel):    
 
-    def __init__(self, input_shape) -> None:
-        super().__init__()
-        self.input_shape = input_shape
-
-    def build_model(self) -> keras.Sequential:
-        self.model = keras.models.Sequential([
-            # keras.layers.SimpleRNN(16,  return_sequences=True, input_shape=self.input_shape),
-            # keras.layers.SimpleRNN(16,  return_sequences=True, input_shape=self.input_shape),
-            keras.layers.SimpleRNN(10, return_sequences=True ,input_shape=self.input_shape),
-            keras.layers.SimpleRNN(10,),
-            keras.layers.Dense(1, activation='sigmoid')
-        ])    
-   
+class LSTMModule(BaseMLEXModule):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super().__init__(LSTMModule, input_size, hidden_size, num_layers, num_classes)
+        self.model = nn.Sequential(
+        nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
+        )
+        self.init_parameters()
         
-class SimpleLSTMModel(BaseModel):
-
-    def __init__(self,input_shape)-> None:
-        super().__init__()
-        self.input_shape = input_shape
-
-    def build_model(self) -> keras.Sequential:
-
-        self.model = tf.keras.Sequential([
-            # tf.keras.layers.LSTM(16, return_sequences=True, input_shape=self.input_shape),
-            #  tf.keras.layers.LSTM(16),
-            tf.keras.layers.LSTM(10,return_sequences=True, input_shape=self.input_shape),
-            tf.keras.layers.LSTM(10,),
-            tf.keras.layers.Dense(1, activation='sigmoid')
-        ])
-   
+        
+class GRUModule(BaseMLEXModule):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super().__init__(GRUModule, input_size, hidden_size, num_layers, num_classes)
+        self.model = nn.Sequential(
+        nn.GRU(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
+        )
+        self.init_parameters()
+        
+        
+class BILSTMModule(BaseMLEXModule):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super().__init__(BILSTMModule, input_size, hidden_size, num_layers, num_classes)
+        self.model = nn.Sequential(
+        nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, bidirectional=True),
+        )
+        self.init_parameters()
+        
+                
+        
+        
+if __name__ == '__main__':
+    mlex_component = RNNModule(input_size=10,hidden_size=2,num_layers=2,num_classes=1)
+    for p in mlex_component.parameters():
+        print(p)
     
-class SimpleGruModel(BaseModel):
-    
-    def __init__(self,input_shape)-> None:
-        super().__init__()
-        self.input_shape = input_shape
-
-    def build_model(self) ->keras.Sequential:
-        self.model = tf.keras.Sequential([
-            # tf.keras.layers.GRU(10, return_sequences=True, input_shape = self.input_shape),
-            # tf.keras.layers.GRU(16),
-            tf.keras.layers.GRU(10,return_sequences=True, input_shape = self.input_shape),
-            tf.keras.layers.GRU(10, ),
-            tf.keras.layers.Dense(1,activation='sigmoid')
-        ])
-
-class SimpleBiLSTMModel(BaseModel):
-    def __init__(self,input_shape)-> None:
-        super().__init__()
-        self.input_shape = input_shape
-
-    def build_model(self) ->keras.Sequential:
-        self.model = tf.keras.Sequential([
-            tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(10, return_sequences=True)),
-            tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(10)),
-            tf.keras.layers.Dense(1,activation='sigmoid')
-        ])
