@@ -35,24 +35,19 @@ class SequenceDataset(Dataset):
         X_seq = self.X[i:i + self.sequence_length]
         y_seq = self.y[i + self.sequence_length - 1] # seq to vec
 
-        #timestamps = X_seq[:, self.timestamps_columns]  
-        #sort_idx = np.lexsort(timestamps.T)
-        #X_seq_sorted = X_seq[sort_idx]  
-
         return X_seq, y_seq
 
 class SequenceTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, column_to_stratify, sequence_length=10, batch_size=32):
+    def __init__(self, column_to_stratify, sequence_length=10, batch_size=32, shuffled=True):
         self.sequence_length = sequence_length
         self.batch_size = batch_size
         self.column_to_stratify = column_to_stratify
-
+        self.shuffled = shuffled
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, X, y):
-    
         dataset = SequenceDataset(X, y, self.sequence_length, self.column_to_stratify)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffled)
         return dataloader

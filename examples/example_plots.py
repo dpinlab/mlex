@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from evaluation.plotter import EvaluationPlotter
+from mlex.evaluation.plotter import EvaluationPlotter
 
 
 plotter = EvaluationPlotter("evaluation.parquet")

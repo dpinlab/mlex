@@ -1,4 +1,4 @@
 from .mlex import *
 from .notebooks import *
-from .results import *
-from .test import *
+from .publications import *
+from .tests import *

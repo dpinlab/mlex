@@ -7,7 +7,7 @@ class PreProcessing:
         self.df = df
         
 
-    def get_X_y(self):
+    def get_X_y(self, target):
             
             df = self.df
             columns_num = [
@@ -22,16 +22,17 @@ class PreProcessing:
                 'CNAB',
                 'NATUREZA_SALDO'
             ]
+
             tranformer = CompositeTranformer(
             numeric_features=columns_num,
             categorical_features=columns_cat)
             
             X = tranformer.transform(df)
+            feature_names = tranformer.get_feature_names_out()
             # X = df[np.concatenate([columns_num, columns_cat])].values
-            target = ['I-d']
             y = df[target].values
             y = np.nan_to_num(y)
-            return X, y
+            return X, y, feature_names
     
     def match_datasets(df_train, df_test):
 

@@ -18,6 +18,9 @@ class CategoricalOneHotTransfomer(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None, **fit_params):
         Xt = self.encoder.fit_transform(X).toarray()
         return Xt
+
+    def get_feature_names_out(self, input_features=None):
+        return self.encoder.get_feature_names_out(input_features)
     
 
 class NumericalTransfomer(BaseEstimator, TransformerMixin):
@@ -32,9 +35,12 @@ class NumericalTransfomer(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None, **fit_params):
         Xt = self.encoder.fit_transform(X)
         return Xt
+
+    def get_feature_names_out(self, input_features=None):
+        return input_features
     
 class CompositeTranformer(BaseEstimator, TransformerMixin):
-     
+    
     def __init__(self, numeric_features, categorical_features) -> None:
         super().__init__()
         self.numberic_feature = numeric_features
@@ -43,15 +49,19 @@ class CompositeTranformer(BaseEstimator, TransformerMixin):
             transformers=[
                 ("num", NumericalTransfomer(), self.numberic_feature),
                 ("cat", CategoricalOneHotTransfomer(), self.categorical_features),
-            ]
+            ],
+            verbose_feature_names_out=False
         )
-        
+
     def fit(self, X, y=None):
         return self
     
     def transform(self, X, y=None, **fit_params):
         Xt = self.encoder.fit_transform(X, y)
         return Xt
+
+    def get_feature_names_out(self, input_features=None):
+        return self.encoder.get_feature_names_out(input_features)
 
 #TODO implementar
 class EmbeedinglTransfomer(BaseEstimator, TransformerMixin):

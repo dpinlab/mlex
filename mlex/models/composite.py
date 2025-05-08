@@ -6,28 +6,29 @@ import torch.nn.functional as F
 from torch.optim import Optimizer
 from abc import ABC, abstractmethod
 from mlex.models.models import (RNNModule, LSTMModule, GRUModule)
+
+
 class MLEXComponent(ABC, nn.Module):
-    
     @abstractmethod
     def optimize_module(self, x, target, loss_fn=None):
         pass
-    
-    
+
+
 class MLEXComposite(MLEXComponent):
     def __init__(self):
         super(MLEXComposite,self).__init__()
         self.loss_fn = F.binary_cross_entropy
-        
+
     def optimize_module(self, x, target, loss_fn=None):
         for child in self.children():
-            child.optimize_module(x, target, loss_fn=self.loss_fn)        
-    
+            child.optimize_module(x, target, loss_fn=self.loss_fn)
+
     def forward(self,x):
         results = []
         for child in self.children():
             results.append(child.forward(x))
         return results
-    
+
 class MLEXLeafComponent(MLEXComponent):
     def __init__(self, optimizer, model:nn.Module):
         super().__init__()
