@@ -37,6 +37,7 @@ class SequenceDataset(Dataset):
 
         return X_seq, y_seq
 
+
 class SequenceTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, column_to_stratify, sequence_length=10, batch_size=32, shuffled=True):
         self.sequence_length = sequence_length
