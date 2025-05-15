@@ -14,14 +14,10 @@ class BaseMLEXModule(nn.Module, ABC):
         self.num_layers = num_layers
         self.num_classes = num_classes
         self.module = module(input_size=self.input_size, hidden_size=self.hidden_size,num_layers=self.num_layers, batch_first=True, bidirectional=bidirectional)
-        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
-        self.output_layer = nn.Sigmoid()
         self._init_parameters()
         
     def _init_parameters(self):
-        init.xavier_uniform_(self.linear.weight)
-        init.zeros_(self.linear.bias)
-        for module in self.module._modules.items():
+        for module in self._modules.items():
             _, layers = module 
             weights = layers._all_weights
             for layer_weight in weights:
@@ -44,23 +40,39 @@ class BaseMLEXModule(nn.Module, ABC):
 class RNNModel(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
         super().__init__(nn.RNN,input_size, hidden_size, num_layers, num_classes)
+        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
+        self.output_layer = nn.Sigmoid()
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
         
         
     
 class GRUModel(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
         super().__init__(nn.GRU, input_size, hidden_size, num_layers, num_classes)
+        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
+        self.output_layer = nn.Sigmoid()
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
 
 
 class LSTMModel(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
         super().__init__(nn.LSTM, input_size, hidden_size, num_layers, num_classes)
+        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
+        self.output_layer = nn.Sigmoid()
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
        
                 
         
 class BILSTMModel(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
         super().__init__(nn.LSTM, input_size, hidden_size, num_layers, num_classes, bidirectional=True)
+        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
+        self.output_layer = nn.Sigmoid()
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
 
                 
         
