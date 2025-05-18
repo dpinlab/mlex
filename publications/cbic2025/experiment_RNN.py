@@ -183,7 +183,7 @@ for sequence_composition in sequences_compositions:
                                         threshold_selection)
             evaluator.evaluate(np.array(y_true), [], y_pred_score)
             print(evaluator.summary())
-            print('\n\n')
+            print('\n')
 
             evaluator.save('evaluation.parquet')
             evaluator.save('evaluation.json')
