@@ -24,7 +24,7 @@ column_to_stratify = 'CPF_CNPJ_TITULAR'
 hidden_size = 10
 num_layers = 1
 num_classes = 1
-epochs = 100
+epochs = 30
 patience = 3
 target_column = 'I-d'
 filter_data = {'NATUREZA_LANCAMENTO': 'C'}
@@ -44,39 +44,51 @@ final_models = []
 for sequence_composition in sequences_compositions:
     print(f"experiment sequence {sequence_composition}")
     sequence_column = sequence_column_dict[sequence_composition]
-    for i in range(iterations):
-        print(f"iteration {i+1}")
-        # Initialize splitter
-        splitter_tt = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.3)
-        splitter_tt.fit(X, y)
-        # Get splits
-        X_train, y_train, X_test, y_test = splitter_tt.transform(X, y)
+    for sequence_length in sequence_lengths:
+        print(f"sequence length {sequence_length}")
+        for i in range(iterations):
+            print(f"iteration {i+1}")
+            # Initialize splitter
+            splitter_tt = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.3)
+            splitter_tt.fit(X, y)
+            # Get splits
+            X_train, y_train, X_test, y_test = splitter_tt.transform(X, y)
 
-        splitter_tv = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.1)
-        splitter_tv.fit(X_train, y_train)
-        # Get splits
-        X_train, y_train, X_val, y_val = splitter_tv.transform(X_train, y_train)
+            splitter_tv = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.1)
+            splitter_tv.fit(X_train, y_train)
+            # Get splits
+            X_train, y_train, X_val, y_val = splitter_tv.transform(X_train, y_train)
 
-        group_train, group_val, group_test = (None, None, None)
-        if sequence_composition != 'temporal':
-            group_train = X_train.loc[:,sequence_column].values
-            group_val = X_val.loc[:,sequence_column].values
-            group_test = X_test.loc[:, sequence_column].values
+            group_train, group_val, group_test = (None, None, None)
+            if sequence_composition != 'temporal':
+                group_train = X_train.loc[:,sequence_column].values
+                group_val = X_val.loc[:,sequence_column].values
+                group_test = X_test.loc[:, sequence_column].values
 
-        preprocessor = PreProcessingTransformer(target_columns=[target_column])
+            preprocessor = PreProcessingTransformer(target_columns=[target_column])
 
-        X_train_array = preprocessor.transform(X_train, y_train)
-        y_train_array = preprocessor.get_target()
-        features_names = preprocessor.get_feature_names_out()
+            X_train_array = preprocessor.transform(X_train, y_train)
+            y_train_array = preprocessor.get_target()
+            features_names_train = preprocessor.get_feature_names_out()
 
-        X_val_array = preprocessor.transform(X_val, y_val)
-        y_val_array = preprocessor.get_target()
+            X_val_array = preprocessor.transform(X_val, y_val)
+            y_val_array = preprocessor.get_target()
+            features_names_val = preprocessor.get_feature_names_out()
 
-        X_test_array = preprocessor.transform(X_test, y_test)
-        y_test_array = preprocessor.get_target()
+            X_test_array = preprocessor.transform(X_test, y_test)
+            y_test_array = preprocessor.get_target()
+            features_names_test = preprocessor.get_feature_names_out()
 
-        for sequence_length in sequence_lengths:
-            print(f"sequence length {sequence_length}")
+            features_names_common = np.intersect1d(np.intersect1d(features_names_train, features_names_val),
+                                                   features_names_test)
+            mask_train = np.isin(features_names_train, features_names_common)
+            mask_val = np.isin(features_names_val, features_names_common)
+            mask_test = np.isin(features_names_test, features_names_common)
+
+            X_train_array = X_train_array[:, mask_train]
+            X_val_array = X_val_array[:, mask_val]
+            X_test_array = X_test_array[:, mask_test]
+
             sequence_transformer = SequenceTransformer(
                 sequence_length=sequence_length,
                 batch_size=batch_size,
@@ -148,7 +160,7 @@ for sequence_composition in sequences_compositions:
                 else:
                     patience_counter += 1
                     if patience_counter >= patience:
-                        print(f"Early stopping at epoch {epoch+1}")
+                        print(f"Early stopping at epoch {epoch+1}\n\n")
                         break
 
             model.load_state_dict(best_weights)
@@ -159,7 +171,7 @@ for sequence_composition in sequences_compositions:
             y_pred_score = []
             y_true = []
             with torch.no_grad():
-                for x_batch, y_batch, _ in test_loader:
+                for x_batch, y_batch in test_loader:
                     x = x_batch.to(device)
                     outputs = model(x).cpu().numpy()
                     y_pred_score.extend(outputs.flatten())
@@ -167,15 +179,16 @@ for sequence_composition in sequences_compositions:
 
             assert len(y_pred_score) == len(y_true)
 
-            evaluator = StandardEvaluator(f"{'RNN'}_Layers-{num_layers}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}",
+            evaluator = StandardEvaluator(f"RNN_Layers-{num_layers}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}",
                                         threshold_selection)
             evaluator.evaluate(np.array(y_true), [], y_pred_score)
             print(evaluator.summary())
+            print('\n\n')
 
-            evaluator.save("evaluation.parquet")
-            evaluator.save("evaluation.json")
+            evaluator.save('evaluation.parquet')
+            evaluator.save('evaluation.json')
 
-            final_models.append(('RNN', sequence_composition, i+1, model.state_dict(), history, input_size, threshold_strategy, num_layers, sequence_length, batch_size, epochs, patience, optimizer.state_dict(), loss_fn.state_dict(), features_names))
+            final_models.append(('RNN', sequence_composition, i+1, model.state_dict(), history, input_size, threshold_strategy, num_layers, sequence_length, batch_size, epochs, patience, optimizer.state_dict(), loss_fn.state_dict(), features_names_train))
 
 
 
