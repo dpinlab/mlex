@@ -39,7 +39,7 @@ class NumericalTransfomer(BaseEstimator, TransformerMixin):
     def get_feature_names_out(self, input_features=None):
         return input_features
     
-class CompositeTranformer(BaseEstimator, TransformerMixin):
+class CompositeTransformer(BaseEstimator, TransformerMixin):
     
     def __init__(self, numeric_features, categorical_features) -> None:
         super().__init__()

@@ -9,8 +9,7 @@ from mlex.features.sequences import SequenceTransformer
 from mlex import FeatureStratifiedSplit
 from mlex import PreProcessingTransformer
 from mlex import DataReader
-from mlex.models.composite import MLEXComposite, MLEXLeafComponent
-from mlex.models.models import RNNModel, GRUModel, LSTMModel, BILSTMModel
+from mlex.models.models import RNNModel, GRUModel, LSTMModel
 
 
 sequence_length = 10
@@ -74,12 +73,11 @@ gru_optimizer =  torch.optim.RMSprop(params=gru.parameters(), lr=.001, alpha=.9,
 loss_fn = nn.BCELoss()
 
 for _ in range(epochs):
-    
- for X_batch, y_batch in train_loader:
-    rnn_optimizer.zero_grad()
-    output = rnn.forward(X_batch)
-    loss = loss_fn(output, y_batch)
-    print(loss)
-    loss.backward()
-    rnn_optimizer.step()
+    for X_batch, y_batch in train_loader:
+        rnn_optimizer.zero_grad()
+        output = rnn.forward(X_batch)
+        loss = loss_fn(output, y_batch)
+        print(loss)
+        loss.backward()
+        rnn_optimizer.step()
 

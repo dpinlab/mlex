@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from mlex import CompositeTranformer
+from ..features.columns import CompositeTransformer
 
 
 class PreProcessingTransformer(BaseEstimator, TransformerMixin):
@@ -17,7 +17,7 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
             'CNAB',
             'NATUREZA_SALDO'
         ]
-        self.composite = CompositeTranformer(
+        self.composite = CompositeTransformer(
             numeric_features=self.numeric_features,
             categorical_features=self.categorical_features
         )

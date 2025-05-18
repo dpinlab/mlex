@@ -46,16 +46,15 @@ class SequenceDataset(Dataset):
 
 
 class SequenceTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, column_to_stratify, sequence_length=10, batch_size=32, shuffled=True):
+    def __init__(self, sequence_length=10, batch_size=32, shuffled=True):
         self.sequence_length = sequence_length
         self.batch_size = batch_size
-        self.column_to_stratify = column_to_stratify
         self.shuffled = shuffled
 
     def fit(self, X, y=None):
         return self
 
-    def transform(self, X, y):
-        dataset = SequenceDataset(X, y, self.sequence_length, self.column_to_stratify)
+    def transform(self, X, y, column_to_stratify):
+        dataset = SequenceDataset(X, y, self.sequence_length, column_to_stratify)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffled)
         return dataloader

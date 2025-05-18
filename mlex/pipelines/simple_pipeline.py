@@ -18,7 +18,7 @@
 # from mlex.features import (
 #     NumericalTransfomer,
 #     CategoricalOneHotTransfomer,
-#     CompositeTranformer
+#     CompositeTransformer
 # )
 
 # from mlex.features import (
@@ -92,7 +92,7 @@
 #         # self.final_model.get_model()
 #         #  
 
-#         # preprocessor = CompositeTranformer(
+#         # preprocessor = CompositeTransformer(
 #         #     numeric_features=self.numeric_features, 
 #         #     categorical_features=self.categorical_features
 #         # )
