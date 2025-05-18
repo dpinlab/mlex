@@ -165,6 +165,7 @@ cython_debug/
 *.avro
 *.parquet
 *.csv
+*.json
 
 
 test/test_composite.py
