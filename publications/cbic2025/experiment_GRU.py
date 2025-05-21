@@ -25,7 +25,7 @@ hidden_size = 10
 num_layers = 1
 num_classes = 1
 epochs = 30
-patience = 3
+patience = 5
 target_column = 'I-d'
 filter_data = {'NATUREZA_LANCAMENTO': 'C'}
 sequences_compositions = ['temporal', 'account', 'individual']
@@ -33,7 +33,7 @@ sequence_column_dict = {'temporal': None, 'account': 'CONTA_TITULAR', 'individua
 iterations = 10
 path = r'/data/pcpe/pcpe_03.csv'
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data)
 X = reader.fit_transform(X=None)
@@ -179,7 +179,7 @@ for sequence_composition in sequences_compositions:
 
             assert len(y_pred_score) == len(y_true)
 
-            evaluator = StandardEvaluator(f"GRU_Layers-{num_layers}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}",
+            evaluator = StandardEvaluator(f"GRU_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}",
                                         threshold_selection)
             evaluator.evaluate(np.array(y_true), [], y_pred_score)
             print(evaluator.summary())
@@ -196,6 +196,7 @@ for sequence_composition in sequences_compositions:
                                  input_size,
                                  threshold_strategy,
                                  num_layers,
+                                 hidden_size,
                                  sequence_length,
                                  batch_size,
                                  epochs,
@@ -204,5 +205,5 @@ for sequence_composition in sequences_compositions:
                                  features_names_train))
 
 
-df = pd.DataFrame(final_models, columns=['MODEL_NAME', 'SEQUENCE_COMPOSITION', 'ITERATION', 'MODEL_STATE_DICT', 'HISTORY', 'INPUT_SIZE', 'THRESHOLD_STRATEGY', 'NUM_LAYERS', 'SEQUENCE_LENGTH', 'BATCH_SIZE', 'EPOCHS', 'PATIENCE', 'OPTIMIZER_STATE_DICT', 'FEATURES_NAMES'])
-df.to_pickle('df_results_GRU.pkl')
+df = pd.DataFrame(final_models, columns=['MODEL_NAME', 'SEQUENCE_COMPOSITION', 'ITERATION', 'MODEL_STATE_DICT', 'HISTORY', 'INPUT_SIZE', 'THRESHOLD_STRATEGY', 'NUM_LAYERS', 'HIDDEN_SIZE', 'SEQUENCE_LENGTH', 'BATCH_SIZE', 'EPOCHS', 'PATIENCE', 'OPTIMIZER_STATE_DICT', 'FEATURES_NAMES'])
+df.to_pickle(f'df_results_GRU_NumLayer-{num_layers}_HiddenSize-{hidden_size}.pkl')
