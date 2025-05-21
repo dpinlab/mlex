@@ -188,9 +188,21 @@ for sequence_composition in sequences_compositions:
             evaluator.save('evaluation.parquet')
             evaluator.save('evaluation.json')
 
-            final_models.append(('LSTM', sequence_composition, i+1, model.state_dict(), history, input_size, threshold_strategy, num_layers, sequence_length, batch_size, epochs, patience, optimizer.state_dict(), loss_fn.state_dict(), features_names_train))
+            final_models.append(('LSTM',
+                                 sequence_composition,
+                                 i+1,
+                                 model.state_dict(),
+                                 history,
+                                 input_size,
+                                 threshold_strategy,
+                                 num_layers,
+                                 sequence_length,
+                                 batch_size,
+                                 epochs,
+                                 patience,
+                                 optimizer.state_dict(),
+                                 features_names_train))
 
 
-
-df = pd.DataFrame(final_models, columns=['MODEL_NAME', 'SEQUENCE_COMPOSITION', 'ITERATION', 'MODEL_STATE_DICT', 'HISTORY', 'INPUT_SIZE', 'THRESHOLD_STRATEGY', 'NUM_LAYERS', 'SEQUENCE_LENGTH', 'BATCH_SIZE', 'EPOCHS', 'PATIENCE', 'OPTIMIZER_STATE_DICT', 'LOSS_FN_STATE_DICT', 'FEATURES_NAMES'])
-df.to_parquet('results_LSTM.parquet')
+df = pd.DataFrame(final_models, columns=['MODEL_NAME', 'SEQUENCE_COMPOSITION', 'ITERATION', 'MODEL_STATE_DICT', 'HISTORY', 'INPUT_SIZE', 'THRESHOLD_STRATEGY', 'NUM_LAYERS', 'SEQUENCE_LENGTH', 'BATCH_SIZE', 'EPOCHS', 'PATIENCE', 'OPTIMIZER_STATE_DICT', 'FEATURES_NAMES'])
+df.to_pickle('df_results_LSTM.pkl')
