@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+import random
 
 
 class DataReader(BaseEstimator, TransformerMixin):
@@ -78,9 +79,28 @@ class DataReader(BaseEstimator, TransformerMixin):
                 df = df[df[col] == val]
 
         return df.reset_index(drop=True)
+    
+    def inserting_noise(self, df, noise_percentage):
+        noise_lenght_percentage = noise_percentage
 
-    def fit(self, X=None, y=None):
+        noise_lenght = len(df) * (noise_lenght_percentage/100)
+        chosed_transactions_indexs = random.choices(range(0, len(df)), k=int(noise_lenght))
+
+        for i in chosed_transactions_indexs:
+            for target in self.target_columns:
+                if df.loc[i, target]  == 0: 
+                    df.loc[i, target]  = 1
+                else:
+                    df.loc[i, target]  = 0
+
+
+
+    def fit(self,noise_percentage=10, insert_noise=False, X=None, y=None):
         df = self.read_df()
+
+        if insert_noise == True:
+            df = self.inserting_noise(df, noise_percentage)
+
         self.y = df[self.target_columns]
         self.X = df.drop(columns=self.target_columns, axis=1)
         return self
