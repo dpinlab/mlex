@@ -92,6 +92,7 @@ class DataReader(BaseEstimator, TransformerMixin):
                     df.loc[i, target]  = 1
                 else:
                     df.loc[i, target]  = 0
+        return df
 
 
 
