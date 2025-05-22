@@ -29,7 +29,7 @@ formatted_ids = [
     for model, length, sequence, threshold in product(models, lengths, sequences, thresholds_list)
 ]
 
-list_model_ids = [formatted_ids[i:i+3] for i in range(0, len(formatted_ids), 3)]
+list_model_ids = [formatted_ids[i:i+len(sequences)] for i in range(0, len(formatted_ids), len(sequences))]
 
 for model_ids in list_model_ids:
     # string_plot = f"{'_'.join(model_ids[0].split('_')[0:2])}_{num_layers}-layer"
