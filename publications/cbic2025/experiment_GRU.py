@@ -54,7 +54,7 @@ for sequence_composition in sequences_compositions:
             # Get splits
             X_train, y_train, X_test, y_test = splitter_tt.transform(X, y)
 
-            splitter_tv = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.1)
+            splitter_tv = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.1, number_of_quantiles=2)
             splitter_tv.fit(X_train, y_train)
             # Get splits
             X_train, y_train, X_val, y_val = splitter_tv.transform(X_train, y_train)
