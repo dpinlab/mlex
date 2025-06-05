@@ -8,13 +8,13 @@ class ThresholdStrategy:
 
 
 class QuantileThresholdStrategy(ThresholdStrategy):
-    def __init__(self, quantile=95):
+    def __init__(self, quantile=.95):
         self.quantile = quantile
 
     def compute_threshold(self, y_true, scores):
         # if scores.ndim == 2 and scores.shape[1] == 2:
         #     scores = scores[:, 1]
-        return np.percentile(scores, self.quantile)
+        return np.quantile(scores, self.quantile)
 
 
 class F1MaxThresholdStrategy(ThresholdStrategy):
