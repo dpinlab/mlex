@@ -40,17 +40,18 @@ class PastFutureSplit(BaseSplitStrategy):
         return self
 
     def transform(self, X, y):
-        return X.loc[self.train_indices_], y.loc[self.train_indices_], X.loc[self.test_indices_], y.loc[self.test_indices_]
+        return X.loc[self.train_indices_].reset_index(drop=True), y.loc[self.train_indices_].reset_index(drop=True), X.loc[self.test_indices_].reset_index(drop=True), y.loc[self.test_indices_].reset_index(drop=True)
 
     def get_test_indices(self):
         return self.test_indices_
 
 
 class FeatureStratifiedSplit(BaseSplitStrategy):
-    def __init__(self, timestamp_column='DATA_LANCAMENTO', column_to_stratify='CONTA_TITULAR', test_proportion=0.3):
+    def __init__(self, timestamp_column='DATA_LANCAMENTO', column_to_stratify='CONTA_TITULAR', test_proportion=0.3, number_of_quantiles=4):
         super().__init__(timestamp_column)
         self.column_to_stratify = column_to_stratify
         self.test_proportion = test_proportion
+        self.number_of_quantiles = number_of_quantiles
         self.train_indices_ = None
         self.test_indices_ = None
 
@@ -59,22 +60,30 @@ class FeatureStratifiedSplit(BaseSplitStrategy):
             raise ValueError("y must be provided for stratification")
 
         dataset_size = len(X)
-        id_counts = X[y == 1].groupby(self.column_to_stratify).size()
+        id_counts = X[y.values == 1].groupby(self.column_to_stratify).size()
         total_counts = X.groupby(self.column_to_stratify).size()
 
         id_ratio = (id_counts / total_counts).fillna(0)
-        accounts_df = pd.DataFrame({
-            self.column_to_stratify: total_counts.index,
-            "total_transactions": total_counts,
-            "id_ratio": id_ratio
-        })
+
+        accounts_df = pd.DataFrame(total_counts).rename(columns={0: "total_transactions"})
+        accounts_df["id_ratio"] = id_ratio
+        accounts_df["id_ratio"] = accounts_df["id_ratio"].fillna(0)
+        accounts_df = accounts_df.reset_index()  # self.column_to_stratify becomes a column
 
         accounts_df["weighted_score"] = accounts_df["id_ratio"] * (accounts_df["total_transactions"] / dataset_size)
-        accounts_df["cluster"] = pd.cut(
-            accounts_df["weighted_score"],
-            bins=[-1e-6, 0, 0.002, 0.02, 1.0],
-            labels=[0, 1, 2, 3]
-        )
+
+        min_score = accounts_df["weighted_score"].min()
+        max_score = accounts_df["weighted_score"].max()
+
+        if min_score == max_score:
+            accounts_df["cluster"] = 0
+        else:
+            accounts_df["cluster"] = pd.qcut(
+                accounts_df["weighted_score"],
+                q=self.number_of_quantiles,
+                labels=False,
+                duplicates='drop'
+            )
 
         train_accounts, test_accounts = train_test_split(
             accounts_df[self.column_to_stratify], 

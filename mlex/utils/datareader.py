@@ -42,9 +42,9 @@ class DataReader(BaseEstimator, TransformerMixin):
             'NUMERO_CONTA_OD': 'str',
             'NOME_ENDOSSANTE_CHEQUE': 'str',
             'DOC_ENDOSSANTE_CHEQUE': 'str',
-            'DIA_LANCAMENTO': 'str',
-            'MES_LANCAMENTO': 'str',
-            'ANO_LANCAMENTO': 'str'
+            'DIA_LANCAMENTO': 'uint8',
+            'MES_LANCAMENTO': 'uint8',
+            'ANO_LANCAMENTO': 'uint16'
         }
 
     def read_df(self):
