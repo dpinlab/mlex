@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from ..features.columns import CompositeTransformer
+import random
 
 
 class PreProcessingTransformer(BaseEstimator, TransformerMixin):
@@ -28,13 +29,32 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
         feature_cols = self.numeric_features + self.categorical_features
         self.composite.fit(X[feature_cols])
         return self
+    
 
-    def transform(self, X, y):
+    def inserting_noise(self, y, noise_percentage):
+        noise_lenght_percentage = noise_percentage
+
+        noise_lenght = len(y) * (noise_lenght_percentage/100)
+        chosed_transactions_indexs = random.choices(range(0, len(y)), k=int(noise_lenght))
+
+        for i in chosed_transactions_indexs:
+            if y[i] == 0: 
+                y[i] = 1
+            else:
+                y[i] = 0
+        return y
+
+    def transform(self, X, y, noise_percentage=10, insert_noise=False):
         feature_cols = self.numeric_features + self.categorical_features
         X_transformed = self.composite.transform(X[feature_cols])
 
         self.feature_names_ = self.composite.get_feature_names_out()
         self.y_ = np.nan_to_num(y[self.target_columns].values)
+        
+
+        if insert_noise == True:
+            self.y_ = self.inserting_noise(self.y_, noise_percentage)
+
 
         return X_transformed
 
