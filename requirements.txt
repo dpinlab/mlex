@@ -10,3 +10,4 @@ tensorflow
 torch
 shap
 pyarrow
+skorch

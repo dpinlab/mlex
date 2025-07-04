@@ -65,9 +65,20 @@ for sequence_composition in sequences_compositions:
                 group_val = X_val.loc[:,sequence_column].values
                 group_test = X_test.loc[:, sequence_column].values
 
-            preprocessor = PreProcessingTransformer(target_columns=[target_column])
+            tipo_categories = pd.unique(X_train['TIPO'])
+            cnab_categories = pd.unique(X_train['CNAB'])
+            ns_categories = pd.unique(X_train['NATUREZA_SALDO'])
 
-            X_train_array = preprocessor.transform(X_train, y_train, insert_noise=True)
+            categories = [
+                tipo_categories,
+                cnab_categories,
+                ns_categories
+            ]
+
+            preprocessor = PreProcessingTransformer(target_columns=[target_column], categories=categories, handle_unknown='ignore')
+            preprocessor.fit(X_train, y_train)
+
+            X_train_array = preprocessor.transform(X_train, y_train)
             y_train_array = preprocessor.get_target()
             features_names_train = preprocessor.get_feature_names_out()
 
@@ -78,16 +89,6 @@ for sequence_composition in sequences_compositions:
             X_test_array = preprocessor.transform(X_test, y_test)
             y_test_array = preprocessor.get_target()
             features_names_test = preprocessor.get_feature_names_out()
-
-            features_names_common = np.intersect1d(np.intersect1d(features_names_train, features_names_val),
-                                                   features_names_test)
-            mask_train = np.isin(features_names_train, features_names_common)
-            mask_val = np.isin(features_names_val, features_names_common)
-            mask_test = np.isin(features_names_test, features_names_common)
-
-            X_train_array = X_train_array[:, mask_train]
-            X_val_array = X_val_array[:, mask_val]
-            X_test_array = X_test_array[:, mask_test]
 
             sequence_transformer = SequenceTransformer(
                 sequence_length=sequence_length,

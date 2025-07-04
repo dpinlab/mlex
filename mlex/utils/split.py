@@ -98,9 +98,9 @@ class FeatureStratifiedSplit(BaseSplitStrategy):
         test_df = X.loc[self.test_indices_]
 
         # Ensure common CNAB values between splits
-        common_cnab = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
-        self.train_indices_ = train_df[train_df['CNAB'].isin(common_cnab)].index
-        self.test_indices_ = test_df[test_df['CNAB'].isin(common_cnab)].index
+        #common_cnab = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
+        #self.train_indices_ = train_df[train_df['CNAB'].isin(common_cnab)].index
+        #self.test_indices_ = test_df[test_df['CNAB'].isin(common_cnab)].index
         return self
 
     def transform(self, X, y):
