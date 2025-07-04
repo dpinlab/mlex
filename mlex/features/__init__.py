@@ -4,7 +4,7 @@ from .sequences import *
 __ALL__ = [
     CategoricalOneHotTransfomer,
     NumericalTransfomer,
-    CompositeTranformer,
+    CompositeTransformer,
     EmbeedinglTransfomer,
     SequenceTransformer,
     SequenceDataset

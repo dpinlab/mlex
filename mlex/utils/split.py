@@ -1,84 +1,113 @@
-import abc
+from sklearn.base import BaseEstimator, TransformerMixin
+from abc import ABC, abstractmethod
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from mlex.utils.preprocessing import PreProcessing
 
 
-class BaseSplitStrategy(abc.ABC):
-    def __init__(self, path, X = None, y = None) -> None:
+class BaseSplitStrategy(BaseEstimator, TransformerMixin, ABC):
+    def __init__(self, timestamp_column='DATA_LANCAMENTO'):
         super().__init__()
-        self.df = df = pd.read_csv(path, delimiter=';', decimal=',')
+        self.timestamp_column = timestamp_column
 
-    @abc.abstractmethod
-    def train_test_split(self):
+    @abstractmethod
+    def fit(self, X, y=None):
         pass
+
+    def transform(self, X, y):
+        return X, y
 
 
 class PastFutureSplit(BaseSplitStrategy):
-    def train_test_split(self,timestamps_columns,proportion=.5):
-        sorted_indices = self.df.sort_values(by=timestamps_columns).index
-        df_sorted = self.df.iloc[sorted_indices]
+    def __init__(self, timestamp_column='DATA_LANCAMENTO', proportion=0.5):
+        super().__init__(timestamp_column)
+        self.proportion = proportion
+        self.train_indices_ = None
+        self.test_indices_ = None
 
-        mid = int(proportion *len(df_sorted))
-        train_df = df_sorted.iloc[:mid]
-        test_df =  df_sorted.iloc[mid:-1] 
-                
-        common_values = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
+    def fit(self, X, y=None):
+        df_sorted = X.sort_values(by=[self.timestamp_column]).reset_index(drop=True)
+        mid = int(self.proportion * len(df_sorted))
+        train_indices = df_sorted.index[:mid]
+        test_indices = df_sorted.index[mid:-1]
 
-        train_df = train_df[train_df['CNAB'].isin(common_values)]
-        test_df = test_df[test_df['CNAB'].isin(common_values)]
+        train_df = df_sorted.loc[train_indices]
+        test_df = df_sorted.loc[test_indices]
 
-        train = PreProcessing(train_df)
-        test = PreProcessing(test_df)
+        # Ensure common CNAB values between splits
+        common_cnab = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
+        self.train_indices_ = train_df[train_df['CNAB'].isin(common_cnab)].index
+        self.test_indices_ = test_df[test_df['CNAB'].isin(common_cnab)].index
+        return self
 
-        X_train, y_train = train.get_X_y()
-        X_test, y_test = test.get_X_y()
+    def transform(self, X, y):
+        return X.loc[self.train_indices_].reset_index(drop=True), y.loc[self.train_indices_].reset_index(drop=True), X.loc[self.test_indices_].reset_index(drop=True), y.loc[self.test_indices_].reset_index(drop=True)
 
-        
-        return X_train, X_test, y_train, y_test
-    
+    def get_test_indices(self):
+        return self.test_indices_
 
-    
+
 class FeatureStratifiedSplit(BaseSplitStrategy):
+    def __init__(self, timestamp_column='DATA_LANCAMENTO', column_to_stratify='CONTA_TITULAR', test_proportion=0.3, number_of_quantiles=4):
+        super().__init__(timestamp_column)
+        self.column_to_stratify = column_to_stratify
+        self.test_proportion = test_proportion
+        self.number_of_quantiles = number_of_quantiles
+        self.train_indices_ = None
+        self.test_indices_ = None
 
-    def __init__(self, path, X=None, y=None):
-        super().__init__(path, X, y)
-        self.group_test = []
-        self.group_train = []
+    def fit(self, X, y=None):
+        if y is None:
+            raise ValueError("y must be provided for stratification")
 
-    def train_test_split(self, column_to_stratify = 'CONTA_TITULAR', typology='I-d', test_proportion=.3):
+        dataset_size = len(X)
+        id_counts = X[y.values == 1].groupby(self.column_to_stratify).size()
+        total_counts = X.groupby(self.column_to_stratify).size()
 
-        id_counts = self.df[self.df[typology] == 1].groupby(column_to_stratify).size()
-        total_counts = self.df.groupby(column_to_stratify).size()
         id_ratio = (id_counts / total_counts).fillna(0)
 
-        accounts_df = pd.DataFrame({f"{column_to_stratify}": total_counts.index, "id_ratio": id_ratio})
-        accounts_df["cluster"] = pd.cut(accounts_df["id_ratio"], bins=[-0.01, 0, 0.25, 0.5, 1.0], labels=[0, 1, 2, 3])
+        accounts_df = pd.DataFrame(total_counts).rename(columns={0: "total_transactions"})
+        accounts_df["id_ratio"] = id_ratio
+        accounts_df["id_ratio"] = accounts_df["id_ratio"].fillna(0)
+        accounts_df = accounts_df.reset_index()  # self.column_to_stratify becomes a column
 
-        train_accounts, test_accounts = train_test_split(
-            accounts_df[column_to_stratify], test_size=test_proportion, stratify=accounts_df["cluster"]
+        accounts_df["weighted_score"] = accounts_df["id_ratio"] * (accounts_df["total_transactions"] / dataset_size)
+
+        min_score = accounts_df["weighted_score"].min()
+        max_score = accounts_df["weighted_score"].max()
+
+        if min_score == max_score:
+            accounts_df["cluster"] = 0
+        else:
+            accounts_df["cluster"] = pd.qcut(
+                accounts_df["weighted_score"],
+                q=self.number_of_quantiles,
+                labels=False,
+                duplicates='drop'
             )
 
-        train_df = self.df[self.df[column_to_stratify].isin(train_accounts)]
-        test_df = self.df[self.df[column_to_stratify].isin(test_accounts)]
+        train_accounts, test_accounts = train_test_split(
+            accounts_df[self.column_to_stratify], 
+            test_size=self.test_proportion, 
+            stratify=accounts_df["cluster"]
+        )
 
-        common_values = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
+        self.train_indices_ = X[X[self.column_to_stratify].isin(train_accounts)].index
+        self.test_indices_ = X[X[self.column_to_stratify].isin(test_accounts)].index
 
-        train_df = train_df[train_df['CNAB'].isin(common_values)]
-        test_df = test_df[test_df['CNAB'].isin(common_values)]
+        train_df = X.loc[self.train_indices_]
+        test_df = X.loc[self.test_indices_]
 
-        train_df = train_df.sort_values(by=column_to_stratify).reset_index(drop=True)
-        test_df = test_df.sort_values(by=column_to_stratify).reset_index(drop=True)
+        # Ensure common CNAB values between splits
+        #common_cnab = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
+        #self.train_indices_ = train_df[train_df['CNAB'].isin(common_cnab)].index
+        #self.test_indices_ = test_df[test_df['CNAB'].isin(common_cnab)].index
+        return self
 
-        self.group_train = train_df[column_to_stratify].values
-        self.group_test = test_df[column_to_stratify].values    
+    def transform(self, X, y):
+        return X.loc[self.train_indices_], y.loc[self.train_indices_], X.loc[self.test_indices_], y.loc[self.test_indices_]
 
-        train = PreProcessing(train_df)
-        test = PreProcessing(test_df)
+    def get_test_indices(self):
+        return self.test_indices_
 
-        X_train, y_train = train.get_X_y()
-        X_test, y_test = test.get_X_y()
-
-
-        return X_train, X_test, y_train, y_test
-
+    def get_groups(self, X):
+        return X.loc[self.train_indices_, self.column_to_stratify].values, X.loc[self.test_indices_, self.column_to_stratify].values

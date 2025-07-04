@@ -1,49 +1,66 @@
-import pandas as pd
 import numpy as np
-from mlex import CompositeTranformer
-class PreProcessing:
+from sklearn.base import BaseEstimator, TransformerMixin
+from ..features.columns import CompositeTransformer
+import random
 
-    def __init__(self,df):
-        self.df = df
-        
 
-    def get_X_y(self):
-            
-            df = self.df
-            columns_num = [
-                'DIA_LANCAMENTO', 
-                'MES_LANCAMENTO',
-                'VALOR_TRANSACAO',
-                'VALOR_SALDO',
-            ]
+class PreProcessingTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, target_columns=None, numeric_features=None, categorical_features=None, categories='auto', handle_unknown='error'):
+        self.target_columns = target_columns or ['I-d']  # Default target
+        self.numeric_features = numeric_features or [
+            'DIA_LANCAMENTO',
+            'MES_LANCAMENTO',
+            'VALOR_TRANSACAO',
+            'VALOR_SALDO',
+        ]
+        self.categorical_features = categorical_features or [
+            'TIPO',
+            'CNAB',
+            'NATUREZA_SALDO'
+        ]
+        self.composite = CompositeTransformer(
+            numeric_features=self.numeric_features,
+            categorical_features=self.categorical_features,
+            categories=categories,
+            handle_unknown=handle_unknown
+        )
+        self.feature_names_ = None
+        self.y_ = None
 
-            columns_cat = [
-                'TIPO',
-                'CNAB',
-                'NATUREZA_SALDO'
-            ]
-            tranformer = CompositeTranformer(
-            numeric_features=columns_num,
-            categorical_features=columns_cat)
-            
-            X = tranformer.transform(df)
-            # X = df[np.concatenate([columns_num, columns_cat])].values
-            target = ['I-d']
-            y = df[target].values
-            y = np.nan_to_num(y)
-            return X, y
+    def fit(self, X, y=None):
+        feature_cols = self.numeric_features + self.categorical_features
+        self.composite.fit(X[feature_cols])
+        return self
     
-    def match_datasets(df_train, df_test):
 
-        colunas_train = list(df_train.columns)
-        colunas_test = list(df_test.columns)
+    def inserting_noise(self, y, noise_percentage):
+        noise_lenght_percentage = noise_percentage
 
-        # Encontrar colunas comuns
-        colunas_comuns = list(set(colunas_train) & set(colunas_test))
+        noise_lenght = len(y) * (noise_lenght_percentage/100)
+        chosed_transactions_indexs = random.sample(range(0, len(y)), k=int(noise_lenght))
 
-        # Manter apenas as colunas comuns em ambos os DataFrames
-        df_train = df_train[colunas_comuns]
-        df_test = df_test[colunas_comuns]
+        for i in chosed_transactions_indexs:
+            if y[i] == 0:
+                y[i] = 1
+            else:
+                y[i] = 0
+        return y
 
+    def transform(self, X, y, noise_percentage=10, insert_noise=False):
+        feature_cols = self.numeric_features + self.categorical_features
+        X_transformed = self.composite.transform(X[feature_cols])
 
-        return df_train, df_test
+        self.feature_names_ = self.composite.get_feature_names_out()
+        if y is not None:
+            self.y_ = np.nan_to_num(y[self.target_columns].values)
+
+            if insert_noise == True:
+                self.y_ = self.inserting_noise(self.y_, noise_percentage)
+
+        return X_transformed
+
+    def get_feature_names_out(self, input_features=None):
+        return self.feature_names_
+
+    def get_target(self):
+        return self.y_

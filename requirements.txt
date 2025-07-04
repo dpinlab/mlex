@@ -4,6 +4,10 @@ matplotlib
 numpy
 scikit-learn
 networkx
+fastavro
 keras
 tensorflow
+torch
+shap
 pyarrow
+skorch

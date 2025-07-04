@@ -13,7 +13,10 @@ class SequenceDataset(Dataset):
         self.sequence_length = sequence_length
         self.column_to_stratify = column_to_stratify
 
-        self.valid_indices = self._generate_valid_indices()
+        if column_to_stratify is not None:
+            self.valid_indices = self._generate_valid_indices()
+        else:
+            self.valid_indices = np.arange(len(X) - self.sequence_length + 1).tolist()
 
 
     def _generate_valid_indices(self):
@@ -21,10 +24,14 @@ class SequenceDataset(Dataset):
             indices[] : all the initial indexes of sequences that can be used
         '''
         indices = []
-        for i in range(len(self.X) - self.sequence_length + 1):
+        i = 0
+        while i < (len(self.X) - self.sequence_length + 1):
             window = self.column_to_stratify[i:i + self.sequence_length]
             if np.all(window == window[0]):
                 indices.append(i)
+                i += 1
+            else:
+                i += np.min(np.where(np.array(window) != window[0]))
         return indices
 
     def __len__(self):
@@ -35,24 +42,19 @@ class SequenceDataset(Dataset):
         X_seq = self.X[i:i + self.sequence_length]
         y_seq = self.y[i + self.sequence_length - 1] # seq to vec
 
-        #timestamps = X_seq[:, self.timestamps_columns]  
-        #sort_idx = np.lexsort(timestamps.T)
-        #X_seq_sorted = X_seq[sort_idx]  
-
         return X_seq, y_seq
 
+
 class SequenceTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, column_to_stratify, sequence_length=10, batch_size=32):
+    def __init__(self, sequence_length=10, batch_size=32, shuffled=True):
         self.sequence_length = sequence_length
         self.batch_size = batch_size
-        self.column_to_stratify = column_to_stratify
-
+        self.shuffled = shuffled
 
     def fit(self, X, y=None):
         return self
 
-    def transform(self, X, y):
-    
-        dataset = SequenceDataset(X, y, self.sequence_length, self.column_to_stratify)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+    def transform(self, X, y, column_to_stratify):
+        dataset = SequenceDataset(X, y, self.sequence_length, column_to_stratify)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffled)
         return dataloader

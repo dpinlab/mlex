@@ -4,19 +4,20 @@ from torch.nn import init
 from abc import ABC
 import keras
 
+
+
 class BaseMLEXModule(nn.Module, ABC):
-    def __init__(self, module,input_size, hidden_size, num_layers, num_classes):
+    def __init__(self,module,input_size, hidden_size, num_layers, num_classes, bidirectional=False):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.num_classes = num_classes
-        self.linear = nn.Linear(in_features=hidden_size, out_features=num_classes)
+        self.module = module(input_size=self.input_size, hidden_size=self.hidden_size,num_layers=self.num_layers, batch_first=True, bidirectional=bidirectional)
+        self._init_parameters()
         
-    def init_parameters(self):
-        init.xavier_uniform_(self.linear.weight)
-        init.zeros_(self.linear.bias)
-        for module in self.model._modules.items():
+    def _init_parameters(self):
+        for module in self._modules.items():
             _, layers = module 
             weights = layers._all_weights
             for layer_weight in weights:
@@ -29,50 +30,55 @@ class BaseMLEXModule(nn.Module, ABC):
                         init.zeros_(getattr(layers,weight))
                         
     def forward(self,x):
-        output, h_t = self.model(x)
-        logits = self.linear(output)
-        return F.sigmoid(logits)
+       output, h_n = self.module(x)
+       output = output[:, -1, :]
+       logits = self.linear(output)
+       z = self.output_layer(logits)
+       return z 
+                        
 
-class RNNModule(BaseMLEXModule):
+class RNNModel(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(RNNModule, input_size, hidden_size, num_layers, num_classes)
-        self.model = nn.Sequential(
-        nn.RNN(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
-        )
-        self.init_parameters()
+        super().__init__(nn.RNN,input_size, hidden_size, num_layers, num_classes)
+        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
+        self.output_layer = nn.Sigmoid()
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
+        
+        
+    
+class GRUModel(BaseMLEXModule):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super().__init__(nn.GRU, input_size, hidden_size, num_layers, num_classes)
+        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
+        self.output_layer = nn.Sigmoid()
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
 
 
-class LSTMModule(BaseMLEXModule):
+class LSTMModel(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(LSTMModule, input_size, hidden_size, num_layers, num_classes)
-        self.model = nn.Sequential(
-        nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
-        )
-        self.init_parameters()
+        super().__init__(nn.LSTM, input_size, hidden_size, num_layers, num_classes)
+        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
+        self.output_layer = nn.Sigmoid()
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
+       
+                
         
-        
-class GRUModule(BaseMLEXModule):
+class BILSTMModel(BaseMLEXModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(GRUModule, input_size, hidden_size, num_layers, num_classes)
-        self.model = nn.Sequential(
-        nn.GRU(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True),
-        )
-        self.init_parameters()
-        
-        
-class BILSTMModule(BaseMLEXModule):
-    def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__(BILSTMModule, input_size, hidden_size, num_layers, num_classes)
-        self.model = nn.Sequential(
-        nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, bidirectional=True),
-        )
-        self.init_parameters()
-        
+        super().__init__(nn.LSTM, input_size, hidden_size, num_layers, num_classes, bidirectional=True)
+        self.linear = nn.Linear(in_features=self.hidden_size, out_features=num_classes)
+        self.output_layer = nn.Sigmoid()
+        init.xavier_uniform_(self.linear.weight)
+        init.zeros_(self.linear.bias)
+
                 
         
         
-if __name__ == '__main__':
-    mlex_component = RNNModule(input_size=10,hidden_size=2,num_layers=2,num_classes=1)
-    for p in mlex_component.parameters():
-        print(p)
+#if __name__ == '__main__':
+    #mlex_component = RNNModule(input_size=10,hidden_size=2,num_layers=2,num_classes=1)
+    #for p in mlex_component.parameters():
+    #    print(p)
     

@@ -164,7 +164,9 @@ cython_debug/
 *.pdf
 *.avro
 *.parquet
-
+*.csv
+*.json
+*.pkl
 
 test/test_composite.py
 test/test_rnn_model.py
