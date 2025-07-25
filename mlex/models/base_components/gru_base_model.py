@@ -97,6 +97,7 @@ class GRUBaseModel(nn.Module):
         torch.manual_seed(self.random_seed)
 
         self.__fit_core(X, y)
+        self.fitted_ = True
 
     def predict_proba(self, X):
         self.eval()

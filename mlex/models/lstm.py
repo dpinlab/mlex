@@ -118,5 +118,5 @@ class LSTM(nn.Module, BaseEstimator, ClassifierMixin):
         test_loader = self.create_test_loader(X, y)
         y_true = []
         for _, y_batch in test_loader:
-            y_true.extend(np.array(y_batch, dtype="int4").flatten())
+            y_true.extend(np.array(y_batch, dtype="int8").flatten())
         return y_true
