@@ -10,6 +10,7 @@ from copy import deepcopy
 class GRUBaseModel(nn.Module):
     def __init__(
         self,
+        validation_data,
         input_size=None,
         hidden_size=10,
         num_layers=1,
@@ -23,7 +24,6 @@ class GRUBaseModel(nn.Module):
         weight_decay=.0,
         epochs=30,
         patience=5,
-        validation_data=None,
         group_index=-1,
         random_seed=42,
         device=None,

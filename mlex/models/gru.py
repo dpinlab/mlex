@@ -8,7 +8,16 @@ from mlex.utils.preprocessing import PreProcessingTransformer
 
 
 class GRU(nn.Module, BaseEstimator, ClassifierMixin):
-    def __init__(self, validation_data=None, target_column=None, categories=None, **kwargs):
+    def __init__(self, validation_data, target_column=None, categories=None, **kwargs):
+        """
+        Initialize LSTM model.
+        
+        Args:
+            validation_data: tuple of (X_val, y_val) - validation features and targets
+            target_column: str - name of target column in dataset
+            categories: list - categorical column values for preprocessing
+            **kwargs: additional model parameters
+        """
         super().__init__()
         self.params = {
             'input_size': kwargs.get('input_size', None),
@@ -28,7 +37,7 @@ class GRU(nn.Module, BaseEstimator, ClassifierMixin):
             'random_seed': kwargs.get('random_seed', None),
             'feature_names': kwargs.get('feature_names', None),
             'device': kwargs.get('device', None),
-            'validation_data': validation_data,
+            'validation_data': validation_data,  # tuple of (X_val, y_val)
         }
         self.target_column = target_column
         self.categories = categories
@@ -91,7 +100,7 @@ class GRU(nn.Module, BaseEstimator, ClassifierMixin):
             'validation_data': self.params.get('validation_data', None),
         }
 
-        self.final_model = GRUBaseModel(**model_params)
+        self.final_model = GRUBaseModel(validation_data=model_params['validation_data'], **{k: v for k, v in model_params.items() if k != 'validation_data'})
         preprocessor = PreProcessingTransformer(target_columns=[self.target_column], categories=self.categories, handle_unknown='ignore')
         model = Pipeline(steps=[
             ('preprocessor', preprocessor),
