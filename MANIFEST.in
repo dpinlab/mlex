@@ -1,0 +1,31 @@
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+
+recursive-include mlex *.py
+recursive-include mlex *.md
+recursive-include mlex *.txt
+recursive-include mlex *.yml
+recursive-include mlex *.yaml
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.so
+recursive-exclude * .DS_Store
+recursive-exclude * .git*
+recursive-exclude * .idea
+recursive-exclude * .vscode
+recursive-exclude * *.egg-info
+recursive-exclude * .pytest_cache
+recursive-exclude * .coverage
+recursive-exclude * htmlcov
+recursive-exclude * .tox
+recursive-exclude * .mypy_cache
+recursive-exclude * .black_cache
+recursive-exclude * .flake8_cache
+
+# Exclude data files (they should be downloaded separately)
+recursive-exclude mlex/data *
+recursive-exclude mlex/experiments/notebooks *.ipynb
+recursive-exclude mlex/publications * 
