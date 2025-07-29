@@ -106,7 +106,7 @@ class GRUBaseModel(nn.Module):
         return probs
 
     def predict(self, X):
-        return self.predict_proba(X)
+        return self.score_samples(X)
 
     def score_samples(self, X):
         test_loader = self._create_dataloader(X, None, shuffle_dataloader=False)
