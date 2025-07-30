@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-
+import pandas as pd
 
 class SequenceDataset(Dataset):
     def __init__(self, X, y=None, sequence_length=None, column_to_stratify_index=None):
@@ -34,7 +34,14 @@ class SequenceDataset(Dataset):
         self.X = torch.tensor(X_features_float, dtype=torch.float32)
         self.y = y
         if y is not None:
+            
+            if isinstance(y, pd.DataFrame):
+                y = y.values.squeeze()  
+            elif isinstance(y, pd.Series):
+                y = y.to_numpy()
+            y = np.array(y).squeeze().astype(np.float32)  
             self.y = torch.tensor(y, dtype=torch.float32)
+
         self.sequence_length = sequence_length
         self.column_to_stratify = X[:, column_to_stratify_index]
 
