@@ -14,7 +14,7 @@ from mlex import PreProcessingTransformer
 from mlex import DataReader
 from mlex import StandardEvaluator
 from mlex import F1MaxThresholdStrategy
-from mlex import RNNModel
+from mlex import LSTMModel
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import AgglomerativeClustering
@@ -141,7 +141,7 @@ for cluster_name, cluster_model in cluster_algorithms.items():
                 test_loader = sequence_transformer.transform(X_test_array, y_test_array, column_to_stratify=group_test)
 
                 input_size = X_train_array.shape[1]
-                model = RNNModel(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, num_classes=num_classes)
+                model = LSTMModel(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, num_classes=num_classes)
                 model.to(device=device)
                 optimizer = torch.optim.RMSprop(params=model.parameters(), lr=.001, alpha=.9, eps=1e-07)
 
@@ -222,7 +222,7 @@ for cluster_name, cluster_model in cluster_algorithms.items():
 
                 assert len(y_pred_score) == len(y_true)
 
-                evaluator = StandardEvaluator(f"RNN_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}_{cluster_name}",
+                evaluator = StandardEvaluator(f"LSTM_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}_{cluster_name}",
                                             threshold_selection)
                 evaluator.evaluate(np.array(y_true), [], y_pred_score)
                 print(evaluator.summary())
