@@ -175,3 +175,5 @@ test/test_composite.py
 test/test_rnn_model.py
 
 results/
+
+nohup.*
