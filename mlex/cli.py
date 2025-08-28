@@ -32,7 +32,7 @@ Examples:
     train_parser.add_argument('--target', required=True, help='Target column name')
     train_parser.add_argument('--model', choices=['gru', 'lstm', 'rnn'], default='gru', help='Model type')
     train_parser.add_argument('--output', default='model.pkl', help='Output model file')
-    train_parser.add_argument('--test-split', type=float, default=0.3, help='Test split proportion')
+    train_parser.add_argument('--val-split', type=float, default=0.3, help='Validation split proportion')
     train_parser.add_argument('--epochs', type=int, default=50, help='Number of training epochs')
     train_parser.add_argument('--hidden-size', type=int, default=64, help='Hidden layer size')
     
@@ -85,7 +85,6 @@ def train_model(args):
     model = model_class(
         target_column=args.target,
         validation_data=(X_test, y_test),
-        input_size=10,  # This should be calculated from data
         hidden_size=args.hidden_size,
         epochs=args.epochs
     )

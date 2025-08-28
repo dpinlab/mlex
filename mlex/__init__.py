@@ -4,9 +4,9 @@ Money Laundering Expert System (MLEX)
 A comprehensive machine learning framework for financial fraud detection and money laundering prevention.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.0.2"
 __author__ = "Diego Pinheiro"
-__email__ = "your-email@example.com"
+__email__ = "diegompin@gmail.com"
 
 from .evaluation import *
 from .features import *

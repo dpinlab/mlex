@@ -13,13 +13,7 @@ A comprehensive machine learning framework for financial fraud detection and mon
 ## Installation
 
 ```bash
-pip install mlex
-```
-
-For development installation:
-
-```bash
-pip install mlex[dev]
+pip install mlex-lib
 ```
 
 ## Quick Start
@@ -58,14 +52,6 @@ evaluator.evaluate(y_test, [], scores)
 print(evaluator.summary())
 ```
 
-## Documentation
-
-For detailed documentation, visit: [https://mlex.readthedocs.io](https://mlex.readthedocs.io)
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -79,12 +65,11 @@ If you use MLEX in your research, please cite:
   title={Money Laundering Expert System (MLEX)},
   author={Pinheiro, Diego},
   year={2024},
-  url={https://github.com/yourusername/mlex}
+  url={https://github.com/IoTDataAtelier/mlex}
 }
 ```
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/mlex/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/mlex/discussions)
-- **Email**: your-email@example.com
+- **Issues**: [GitHub Issues](https://github.com/IoTDataAtelier/mlex/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/IoTDataAtelier/mlex/discussions)

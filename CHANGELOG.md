@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - N/A
 
-## [0.1.0] - 2024-12-19
+## [0.0.2] - 2025-07-29
 
 ### Added
 - Initial release of MLEX (Money Laundering Expert System)
