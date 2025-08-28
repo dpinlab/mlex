@@ -14,7 +14,7 @@ from mlex import PreProcessingTransformer
 from mlex import DataReader
 from mlex import StandardEvaluator
 from mlex import F1MaxThresholdStrategy
-from mlex import RNNModel
+from mlex import RNN
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import AgglomerativeClustering
@@ -72,7 +72,7 @@ for cluster_name, cluster_model in cluster_algorithms.items():
         cluster_model.fit(X_full)
         cluster_labels = cluster_model.predict(X_full)
     else:
-        cluster_labels = cluster_model.fit_predict(X_array)
+        cluster_labels = cluster_model.fit_predict(X_full)
     
 
     X_full['cluster'] = cluster_labels
@@ -99,12 +99,12 @@ for cluster_name, cluster_model in cluster_algorithms.items():
                 X_test['GROUP'] = 'Unknown'
 
         
-            splitter_tv = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.3, number_of_quantiles=2)
+            splitter_tv = PastFutureSplit(proportion=0.66)
             splitter_tv.fit(X_train_full, y_train_full)
             X_train, y_train, X_val, y_val = splitter_tv.transform(X_train_full, y_train_full)
 
             validation_data = (X_val, y_val)
-            model_RNN = RNN(validation_data=validation_data, target_column=target_column, seq_length = sequence_length, device=device)
+            model_RNN = RNN(validation_data=validation_data, target_column=target_column, seq_length = sequence_length, numeric_features= X_train.columns,categorical_features=[],device=device)
 
             model_RNN.fit(X_train, y_train)
 

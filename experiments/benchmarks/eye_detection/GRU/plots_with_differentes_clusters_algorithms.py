@@ -26,7 +26,7 @@ clusters = ['kmeans', 'gmm', 'agglomerative']
 
 save_path = join("results", f"{num_layers}-layer")
 ensure_directory_exists(save_path)
-plotter = EvaluationPlotter(f"evaluation.parquet")
+plotter = EvaluationPlotter(f"results_different_clusters/evaluation.parquet")
 
 # Generate the strings
 
@@ -69,7 +69,7 @@ for length in lengths:
 
     labels = [c["label"] for c in curves]
 
-    plotter.plot_roc_curve_with_ci(groups, ax=ax,colors=fixed_colors, labels = labels)
+    plotter.plot_roc_curve_with_ci(groups, ax=ax,colors=fixed_colors, labels = labels, shade=False)
     #ax.legend(labels, loc="lower right")
     ax.set_title(f"ROC curves with 95% CI {models[0]} - SequenceLength {length}")
     plt.savefig(join(save_path, f"{string_plot}_roc_curve_with_ci.pdf"), format="pdf", dpi=300)

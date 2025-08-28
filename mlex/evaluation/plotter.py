@@ -151,7 +151,7 @@ class EvaluationPlotter:
             interpolated_prs.append(interp_pr)
         return common_rr, interpolated_prs
 
-    def plot_roc_curve_with_ci(self, model_groups: List[List[str]], ax=None, colors=None, labels=None):
+    def plot_roc_curve_with_ci(self, model_groups: List[List[str]], ax=None, colors=None, labels=None, shade = True):
         if not ax:
             fig, ax = plt.subplots()
         ax.plot([0, 1], [0, 1], "k--", linewidth=4, label='Random Classifier')
@@ -182,8 +182,9 @@ class EvaluationPlotter:
 
             ax.plot(common_fpr, mean_tpr, linewidth=4,color=color,
                     label=f"{label_text} Context (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
-            ax.fill_between(common_fpr, ci_lower, ci_upper, alpha=0.3, color=color)
-
+            
+            if shade:
+                ax.fill_between(common_fpr, ci_lower, ci_upper, alpha=0.3, color=color)
         ax.set(xlim=[0, 1], ylim=[0, 1.05],
                xlabel="False Positive Rate",
                ylabel="True Positive Rate",

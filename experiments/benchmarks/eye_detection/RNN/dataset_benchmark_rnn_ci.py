@@ -222,20 +222,29 @@ for cluster_name, cluster_model in cluster_algorithms.items():
 
                 assert len(y_pred_score) == len(y_true)
 
-                last_model = model
-                last_history = history
-                last_y_true = y_true
-                last_y_pred_score = y_pred_score
+                evaluator = StandardEvaluator(f"RNN_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}_{cluster_name}",
+                                            threshold_selection)
+                evaluator.evaluate(np.array(y_true), [], y_pred_score)
+                print(evaluator.summary())
+                print('\n')
 
+                evaluator.save('evaluation.parquet')
+                evaluator.save('evaluation.json')
 
-            evaluator = StandardEvaluator(f"RNN_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_{cluster_name}",
-                                        threshold_selection)
-            evaluator.evaluate(np.array(last_y_true), [], last_y_pred_score)
-            print(evaluator.summary())
-            print('\n')
-
-            evaluator.save('evaluation.parquet')
-            evaluator.save('evaluation.json')
-
+                final_models.append(('RNN',
+                                    sequence_composition,
+                                    i+1,
+                                    model.state_dict(),
+                                    history,
+                                    input_size,
+                                    threshold_strategy,
+                                    num_layers,
+                                    hidden_size,
+                                    sequence_length,
+                                    batch_size,
+                                    epochs,
+                                    patience,
+                                    optimizer.state_dict(),
+                                    features_names_train))
 if __name__ == "__main__":
     print("Executando algo")

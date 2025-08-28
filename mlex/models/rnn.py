@@ -8,7 +8,7 @@ from mlex.utils.preprocessing import PreProcessingTransformer
 
 
 class RNN(nn.Module, BaseEstimator, ClassifierMixin):
-    def __init__(self, validation_data, target_column=None, categories=None, **kwargs):
+    def __init__(self, validation_data, target_column=None, categories=None,numeric_features=None,categorical_features=None,  **kwargs):
         """
         Initialize RNN model.
         
@@ -49,6 +49,8 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
         self.categories = categories
         self.final_model = None
         self.model = None
+        self.numeric_features=numeric_features
+        self.categorical_features=categorical_features
 
         if self.model_params['input_size'] is not None:
             self.model = self._build_model()
