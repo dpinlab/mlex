@@ -72,6 +72,7 @@ class DataReader(BaseEstimator, TransformerMixin):
         df.loc[df['CONTA_OD'].str.contains('0_0'), 'CONTA_OD'] = 'EMPTY'
 
         df['DATA_LANCAMENTO'] = pd.to_datetime(df['DATA_LANCAMENTO'])
+        df = df.sort_values(['DATA_LANCAMENTO']).reset_index(drop=True)
 
         if self.filter_dict:
             for col, val in self.filter_dict.items():

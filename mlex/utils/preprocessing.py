@@ -6,7 +6,7 @@ import random
 
 
 class PreProcessingTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, target_columns=None, numeric_features=None, categorical_features=None, automap_features=None, categories=None, handle_unknown='error'):
+    def __init__(self, target_columns=None, numeric_features=None, categorical_features=None, passthrough_features=None, automap_features=None, categories=None, handle_unknown='error'):
         self.target_columns = target_columns or ['I-d']  # Default target
         self.numeric_features = numeric_features or [
             'DIA_LANCAMENTO',
@@ -19,6 +19,7 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
             'CNAB',
             'NATUREZA_SALDO'
         ]
+        self.passthrough_features = passthrough_features or []
         self.automap_features = automap_features or [
             'GROUP'
         ]
@@ -26,6 +27,7 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
         self.composite = CompositeTransformer(
             numeric_features=self.numeric_features,
             categorical_features=self.categorical_features,
+            passthrough_features=self.passthrough_features,
             automap_features=self.automap_features,
             categories=categories,
             handle_unknown=handle_unknown
@@ -34,7 +36,7 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y=None):
-        feature_cols = self.numeric_features + self.categorical_features + self.automap_features
+        feature_cols = self.numeric_features + self.categorical_features + self.passthrough_features + self.automap_features
         self.composite.fit(X[feature_cols])
         self.feature_names_ = self.composite.get_feature_names_out()
         return self
@@ -55,7 +57,7 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
 
 
     def transform(self, X, y=None):
-        feature_cols = self.numeric_features + self.categorical_features + self.automap_features
+        feature_cols = self.numeric_features + self.categorical_features + self.passthrough_features + self.automap_features
         X_transformed = self.composite.transform(X[feature_cols])
 
         y_out = None
