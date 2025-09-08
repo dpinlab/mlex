@@ -8,7 +8,8 @@ from sklearn.mixture import GaussianMixture
 from sklearn.cluster import AgglomerativeClustering
 from mlex import PreProcessingTransformer
 import pandas as pd
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 clusters = ['kmeans', 'gmm', 'agglomerative']
 path = r'/data/isa/EEG_Eye_State_com_timestamp.arff'
@@ -103,5 +104,23 @@ for cluster_name, cluster_model in cluster_algorithms.items():
     print(matriz_probabilidade)
 
     print("\n" + "="*80)
+
+   
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(
+        matriz_probabilidade,
+        annot=True,   
+        cmap="Blues",  
+        cbar=True
+    )
+    plt.title(f"Heatmap - Matriz de Probabilidade ({cluster_name.upper()})")
+    plt.xlabel("Próximo estado")
+    plt.ylabel("Estado atual")
+
+    # salva a figura
+    plt.tight_layout()
+    os.makedirs("results", exist_ok=True)
+    plt.savefig(f"results/heatmap_prob_{cluster_name.lower()}.png", dpi=300)
+    plt.close()
 
     
