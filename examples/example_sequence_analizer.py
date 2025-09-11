@@ -11,18 +11,18 @@ from mlex import DataReader
 
 
 def main():
-    data_path = r'/data/pcpe/pcpe_04.csv'
-    sequence_lengths = [i for i in range(10, 101, 10)]
-    sequences_compositions = ['baseline', 'account', 'individual']
+    data_path = r'/data/pcpe/pcpe_03.csv'
+    sequence_lengths = [i for i in range(10, 51, 10)]
+    sequences_compositions = ['Baseline', 'Individual', 'Account']
     sequence_column_dict = {
-        'baseline': None,
-        'account': 'CONTA_TITULAR',
-        'individual': 'CPF_CNPJ_TITULAR'
+        'Baseline': None,
+        'Individual': 'CPF_CNPJ_TITULAR',
+        'Account': 'CONTA_TITULAR',
     }
     target_column = 'I-d'
     filter_data = {'NATUREZA_LANCAMENTO': 'C'}
 
-    output_dir = join(abspath(join(__file__, "..")), "04_new_sequence_days_analysis")
+    output_dir = join(abspath(join(__file__, "..")), "03_sequence_days_analysis")
     ensure_directory_exists(output_dir)
 
     reader = DataReader(data_path, target_columns=[target_column], filter_dict=filter_data)
@@ -33,7 +33,7 @@ def main():
     for composition in sequences_compositions:
         df2 = df.copy()
         seq_col = sequence_column_dict[composition]
-        if composition != 'baseline':
+        if composition != 'Baseline':
             df2['GROUP'] = df2[seq_col].fillna('Unknown')
         else:
             df2['GROUP'] = 'Unknown'
@@ -72,10 +72,24 @@ def main():
     summary_df.to_csv(summary_path, index=False)
 
     plot_path = join(output_dir, "sequence_days_plots.png")
-    plotter = SequenceAnalyzerPlotter(results)
+    plotter = SequenceAnalyzerPlotter(
+        results,
+        language='en-us',
+        fontsize=12,
+        use_latex_font=True
+    )
 
     plotter.plot_mean_span()
-    plt.savefig(join(output_dir, "mean_span.png"))
+    plt.tight_layout()
+    plt.savefig(join(output_dir, "mean_span.png"), dpi=600)
+
+    plotter.plot_num_sequences()
+    plt.tight_layout()
+    plt.savefig(join(output_dir, "num_sequences.png"), dpi=600)
+
+    plotter.plot_cdf()
+    plt.tight_layout()
+    plt.savefig(join(output_dir, "cdf.png"), dpi=600)
 
     plotter.plot_all(save_path=plot_path)
 

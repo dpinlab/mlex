@@ -168,6 +168,7 @@ cython_debug/
 *.json
 *.pkl
 *.png
+*.tex
 
 test/test_composite.py
 test/test_rnn_model.py
