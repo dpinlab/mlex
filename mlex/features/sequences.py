@@ -9,7 +9,29 @@ class SequenceDataset(Dataset):
         '''
             column_to_stratify : index of column being used to group the sequences
         '''
-        self.X = torch.tensor(np.delete(X, column_to_stratify_index, axis=1).astype(np.float32), dtype=torch.float32)
+        X = np.asarray(X)
+
+        X_features = np.delete(X, column_to_stratify_index, axis=1)
+
+        if X_features.size == 0:
+            X_features_float = np.empty((len(X), 0), dtype=np.float32)
+        else:
+            try:
+                X_features_float = X_features.astype(np.float32)
+            except Exception:
+                # Fallback: keep only columns that can be coerced to float
+                numeric_columns = []
+                for j in range(X_features.shape[1]):
+                    try:
+                        numeric_columns.append(X_features[:, j].astype(np.float32))
+                    except Exception:
+                        continue
+                if numeric_columns:
+                    X_features_float = np.column_stack(numeric_columns).astype(np.float32)
+                else:
+                    X_features_float = np.empty((X_features.shape[0], 0), dtype=np.float32)
+
+        self.X = torch.tensor(X_features_float, dtype=torch.float32)
         self.y = y
         if y is not None:
             self.y = torch.tensor(y, dtype=torch.float32)
