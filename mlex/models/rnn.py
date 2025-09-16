@@ -38,6 +38,10 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
             'feature_names': kwargs.get('feature_names', None),
             'device': kwargs.get('device', None),
             'validation_data': validation_data,  # tuple of (X_val, y_val)
+            'numeric_features': kwargs.get('numeric_features', None),
+            'categorical_features': kwargs.get('categorical_features', None),
+            'passthrough_features': kwargs.get('passthrough_features', None),
+            'automap_features': kwargs.get('automap_features', None),
         }
         self.target_column = target_column
         self.categories = categories
@@ -58,7 +62,7 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
         self.params.update(kwargs)
         
         if self.params['input_size'] is None:
-            preprocessor = PreProcessingTransformer(target_columns=[self.target_column], categories=self.categories, handle_unknown='ignore')
+            preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in self.params.items() if '_features' in k}, categories=self.categories, handle_unknown='ignore')
             preprocessor.fit(X)
             self.params['feature_names'] = preprocessor.get_feature_names_out()
             self.params['input_size'] = self.params['feature_names'].shape[0] - 1
@@ -98,10 +102,15 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
             'random_seed': self.params.get('random_seed', 42) or 42,
             'device': self.params.get('device', None),
             'validation_data': self.params.get('validation_data', None),
+            'numeric_features': self.params.get('numeric_features', ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO']),
+            'categorical_features': self.params.get('categorical_features', ['TIPO', 'CNAB', 'NATUREZA_SALDO']),
+            'passthrough_features': self.params.get('passthrough_features', None),
+            'automap_features': self.params.get('automap_features', ['GROUP']),
         }
+        self.params.update(model_params)
 
         self.final_model = RNNBaseModel(validation_data=model_params['validation_data'], **{k: v for k, v in model_params.items() if k != 'validation_data'})
-        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], categories=self.categories, handle_unknown='ignore')
+        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in model_params.items() if '_features' in k}, categories=self.categories, handle_unknown='ignore')
         model = Pipeline(steps=[
             ('preprocessor', preprocessor),
             ('final_model', self.final_model)
