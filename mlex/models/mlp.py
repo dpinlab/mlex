@@ -1,4 +1,3 @@
-import torch.nn as nn
 import numpy as np
 import time
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -7,7 +6,7 @@ from sklearn.neural_network import MLPClassifier
 from mlex.utils.preprocessing import PreProcessingTransformer
 
 
-class MLP(nn.Module, BaseEstimator, ClassifierMixin):
+class MLP(BaseEstimator, ClassifierMixin):
     def __init__(self, target_column=None, categories=None, **kwargs):
         """
         Initialize MLP model.
@@ -30,7 +29,6 @@ class MLP(nn.Module, BaseEstimator, ClassifierMixin):
             'epsilon': kwargs.get('epsilon', None),
             'max_iter': kwargs.get('max_iter', None),
             'random_state': kwargs.get('random_state', None),
-            'feature_names': kwargs.get('feature_names', None),
             'validation_fraction': kwargs.get('validation_fraction', None),
             'early_stopping': kwargs.get('early_stopping', None),
             'verbose': kwargs.get('verbose', None),
@@ -46,6 +44,7 @@ class MLP(nn.Module, BaseEstimator, ClassifierMixin):
 
         self.model = self._build_model()
 
+        self.fitted_ = False
         self.last_fit_time = 0
 
     @property
@@ -53,14 +52,12 @@ class MLP(nn.Module, BaseEstimator, ClassifierMixin):
         return 'MLP'
 
     def fit(self, X, y):
-        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in self.params.items() if '_features' in k}, categories=self.categories, handle_unknown='ignore')
-        self.params['feature_names'] = preprocessor.get_feature_names_out()
-
         start = time.perf_counter()
         self.model.fit(X, y)
         end = time.perf_counter()
 
         self.last_fit_time = end - start
+        self.fitted_ = True
         return self
 
     def predict(self, X):
@@ -88,15 +85,18 @@ class MLP(nn.Module, BaseEstimator, ClassifierMixin):
             'validation_fraction': self.params.get('validation_fraction', 0.3) or 0.3,
             'early_stopping': self.params.get('early_stopping', True) if self.params.get('early_stopping') is not None else True,
             'verbose': self.params.get('verbose', True) if self.params.get('verbose') is not None else True,
+        }
+        preprocessor_params = {
             'numeric_features': self.params.get('numeric_features', ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO']),
             'categorical_features': self.params.get('categorical_features', ['TIPO', 'CNAB', 'NATUREZA_SALDO']),
             'passthrough_features': self.params.get('passthrough_features', None),
             'automap_features': self.params.get('automap_features', None),
         }
         self.params.update(model_params)
+        self.params.update(preprocessor_params)
 
-        self.final_model = MLPClassifier(**{k: v for k, v in model_params.items() if not '_features' in k})
-        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in model_params.items() if '_features' in k}, categories=self.categories, handle_unknown='ignore')
+        self.final_model = MLPClassifier(**{k: v for k, v in model_params.items()})
+        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in preprocessor_params.items()}, categories=self.categories, handle_unknown='ignore')
         model = Pipeline(steps=[
             ('preprocessor', preprocessor),
             ('final_model', self.final_model)
@@ -105,7 +105,7 @@ class MLP(nn.Module, BaseEstimator, ClassifierMixin):
         return model
 
     def get_feature_names(self):
-        return self.params.get('feature_names')
+        return self.model.named_steps['preprocessor'].get_feature_names_out()
 
     def get_params(self, deep=True):
         return self.params.copy()
