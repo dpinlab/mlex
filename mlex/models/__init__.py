@@ -2,3 +2,4 @@
 from .gru import *
 from .lstm import *
 from .rnn import *
+from .mlp import *

@@ -20,9 +20,7 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
             'NATUREZA_SALDO'
         ]
         self.passthrough_features = passthrough_features or []
-        self.automap_features = automap_features or [
-            'GROUP'
-        ]
+        self.automap_features = automap_features or []
 
         self.composite = CompositeTransformer(
             numeric_features=self.numeric_features,
