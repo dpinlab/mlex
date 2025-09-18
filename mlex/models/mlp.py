@@ -87,10 +87,10 @@ class MLP(BaseEstimator, ClassifierMixin):
             'verbose': self.params.get('verbose', True) if self.params.get('verbose') is not None else True,
         }
         preprocessor_params = {
-            'numeric_features': self.params.get('numeric_features', ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO']),
-            'categorical_features': self.params.get('categorical_features', ['TIPO', 'CNAB', 'NATUREZA_SALDO']),
-            'passthrough_features': self.params.get('passthrough_features', None),
-            'automap_features': self.params.get('automap_features', None),
+            'numeric_features': self.params.get('numeric_features', ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO']) or ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO'],
+            'categorical_features': self.params.get('categorical_features', ['TIPO', 'CNAB', 'NATUREZA_SALDO']) or ['TIPO', 'CNAB', 'NATUREZA_SALDO'],
+            'passthrough_features': self.params.get('passthrough_features', None) or None,
+            'automap_features': self.params.get('automap_features', None) or None,
         }
         self.params.update(model_params)
         self.params.update(preprocessor_params)

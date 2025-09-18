@@ -38,10 +38,10 @@ class LSTM(nn.Module, BaseEstimator, ClassifierMixin):
             'feature_names': kwargs.get('feature_names', None),
             'device': kwargs.get('device', None),
             'validation_data': validation_data,  # tuple of (X_val, y_val)
-            'numeric_features': kwargs.get('numeric_features', None),
-            'categorical_features': kwargs.get('categorical_features', None),
-            'passthrough_features': kwargs.get('passthrough_features', None),
-            'automap_features': kwargs.get('automap_features', None),
+            'numeric_features': kwargs.get('numeric_features', None) or ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO'],
+            'categorical_features': kwargs.get('categorical_features', None) or ['TIPO', 'CNAB', 'NATUREZA_SALDO'],
+            'passthrough_features': kwargs.get('passthrough_features', None) or None,
+            'automap_features': kwargs.get('automap_features', None) or ['GROUP'],
         }
         self.target_column = target_column
         self.categories = categories
@@ -102,15 +102,18 @@ class LSTM(nn.Module, BaseEstimator, ClassifierMixin):
             'random_seed': self.params.get('random_seed', 42) or 42,
             'device': self.params.get('device', None),
             'validation_data': self.params.get('validation_data', None),
-            'numeric_features': self.params.get('numeric_features', ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO']),
-            'categorical_features': self.params.get('categorical_features', ['TIPO', 'CNAB', 'NATUREZA_SALDO']),
-            'passthrough_features': self.params.get('passthrough_features', None),
-            'automap_features': self.params.get('automap_features', ['GROUP']),
+        }
+        preprocessor_params = {
+            'numeric_features': self.params.get('numeric_features', ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO']) or ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO'],
+            'categorical_features': self.params.get('categorical_features', ['TIPO', 'CNAB', 'NATUREZA_SALDO']) or ['TIPO', 'CNAB', 'NATUREZA_SALDO'],
+            'passthrough_features': self.params.get('passthrough_features', None) or None,
+            'automap_features': self.params.get('automap_features', ['GROUP']) or ['GROUP'],
         }
         self.params.update(model_params)
+        self.params.update(preprocessor_params)
 
         self.final_model = LSTMBaseModel(validation_data=model_params['validation_data'], **{k: v for k, v in model_params.items() if k != 'validation_data'})
-        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in model_params.items() if '_features' in k}, categories=self.categories, handle_unknown='ignore')
+        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in preprocessor_params.items()}, categories=self.categories, handle_unknown='ignore')
         model = Pipeline(steps=[
             ('preprocessor', preprocessor),
             ('final_model', self.final_model)
