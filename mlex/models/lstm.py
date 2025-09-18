@@ -60,7 +60,7 @@ class LSTM(nn.Module, BaseEstimator, ClassifierMixin):
     def fit(self, X, y, **kwargs):
         # Update params with any new values
         self.params.update(kwargs)
-        
+
         if self.params['input_size'] is None:
             preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in self.params.items() if '_features' in k}, categories=self.categories, handle_unknown='ignore')
             preprocessor.fit(X)
@@ -112,8 +112,8 @@ class LSTM(nn.Module, BaseEstimator, ClassifierMixin):
         self.params.update(model_params)
         self.params.update(preprocessor_params)
 
-        self.final_model = LSTMBaseModel(validation_data=model_params['validation_data'], **{k: v for k, v in model_params.items() if k != 'validation_data'})
         preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in preprocessor_params.items()}, categories=self.categories, handle_unknown='ignore')
+        self.final_model = LSTMBaseModel(validation_data=model_params['validation_data'], **{k: v for k, v in model_params.items() if k != 'validation_data'})
         model = Pipeline(steps=[
             ('preprocessor', preprocessor),
             ('final_model', self.final_model)

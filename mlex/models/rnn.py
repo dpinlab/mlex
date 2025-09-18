@@ -113,7 +113,6 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
         self.params.update(preprocessor_params)
 
         preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in preprocessor_params.items()}, categories=self.categories, handle_unknown='ignore')
-        
         self.final_model = RNNBaseModel(validation_data=model_params['validation_data'], **{k: v for k, v in model_params.items() if k != 'validation_data'})
         model = Pipeline(steps=[
             ('preprocessor', preprocessor),
