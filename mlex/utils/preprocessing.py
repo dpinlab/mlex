@@ -6,29 +6,18 @@ import random
 
 
 class PreProcessingTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, target_columns=None, numeric_features=None, categorical_features=None, passthrough_features=None, automap_features=None, categories=None, handle_unknown='error'):
-        self.target_columns = target_columns or ['I-d']  # Default target
-        self.numeric_features = numeric_features or [
-            'DIA_LANCAMENTO',
-            'MES_LANCAMENTO',
-            'VALOR_TRANSACAO',
-            'VALOR_SALDO',
-        ]
-        self.categorical_features = categorical_features or [
-            'TIPO',
-            'CNAB',
-            'NATUREZA_SALDO'
-        ]
+    def __init__(self, target_column=None, numeric_features=None, categorical_features=None, passthrough_features=None, context_feature=None, categories=None, handle_unknown='error'):
+        self.target_column = target_column or []
+        self.numeric_features = numeric_features or []
+        self.categorical_features = categorical_features or []
         self.passthrough_features = passthrough_features or []
-        self.automap_features = automap_features or [
-            'GROUP'
-        ]
+        self.context_feature = context_feature or []
 
         self.composite = CompositeTransformer(
             numeric_features=self.numeric_features,
             categorical_features=self.categorical_features,
             passthrough_features=self.passthrough_features,
-            automap_features=self.automap_features,
+            context_feature=self.context_feature,
             categories=categories,
             handle_unknown=handle_unknown
         )
@@ -36,7 +25,7 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y=None):
-        feature_cols = self.numeric_features + self.categorical_features + self.passthrough_features + self.automap_features
+        feature_cols = self.numeric_features + self.categorical_features + self.passthrough_features + self.context_feature
         self.composite.fit(X[feature_cols])
         self.feature_names_ = self.composite.get_feature_names_out()
         return self
@@ -57,12 +46,12 @@ class PreProcessingTransformer(BaseEstimator, TransformerMixin):
 
 
     def transform(self, X, y=None):
-        feature_cols = self.numeric_features + self.categorical_features + self.passthrough_features + self.automap_features
+        feature_cols = self.numeric_features + self.categorical_features + self.passthrough_features + self.context_feature
         X_transformed = self.composite.transform(X[feature_cols])
 
         y_out = None
         if y is not None:
-            y_out = np.nan_to_num(y[self.target_columns].values)
+            y_out = np.nan_to_num(y[self.target_column].values)
             return X_transformed, y_out
 
         return X_transformed

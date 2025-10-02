@@ -4,16 +4,16 @@ import random
 
 
 class BaseNoiseStrategy:
-    def inject_noise(self, y, noise_percentage, target_columns):
+    def inject_noise(self, y, noise_percentage, target_column):
         raise NotImplementedError
 
 
 class ProportionalNoiseStrategy(BaseNoiseStrategy):
-    def inject_noise(self, y, noise_percentage, target_columns):
+    def inject_noise(self, y, noise_percentage, target_column):
         if y is None:
             return y
         y_noisy = y.copy()
-        y_values = y_noisy[target_columns].values if hasattr(y_noisy, 'values') else y_noisy
+        y_values = y_noisy[target_column].values if hasattr(y_noisy, 'values') else y_noisy
         y_noisy_values = y_values.copy()
         if y_noisy_values.ndim > 1 and y_noisy_values.shape[1] == 1:
             y_noisy_values = y_noisy_values.ravel()
@@ -29,7 +29,7 @@ class ProportionalNoiseStrategy(BaseNoiseStrategy):
         y_noisy_values[flip_idx_1_to_0] = 0
         y_noisy_values[flip_idx_0_to_1] = 1
         if hasattr(y_noisy, 'values'):
-            y_noisy[target_columns] = y_noisy_values.reshape(-1, 1)
+            y_noisy[target_column] = y_noisy_values.reshape(-1, 1)
         else:
             y_noisy = y_noisy_values
 
@@ -37,11 +37,11 @@ class ProportionalNoiseStrategy(BaseNoiseStrategy):
 
 
 class RandomNoiseStrategy(BaseNoiseStrategy):
-    def inject_noise(self, y, noise_percentage, target_columns):
+    def inject_noise(self, y, noise_percentage, target_column):
         if y is None:
             return  y
         y_noisy = y.copy()
-        y_values = y_noisy[target_columns].values if hasattr(y_noisy, 'values') else y_noisy
+        y_values = y_noisy[target_column].values if hasattr(y_noisy, 'values') else y_noisy
         y_noisy_values = y_values.copy()
 
         noise_lenght = len(y_noisy_values) * (noise_percentage/100)
@@ -50,7 +50,7 @@ class RandomNoiseStrategy(BaseNoiseStrategy):
         y_noisy_values[chosed_transactions_indexs] = 1 - y_noisy_values[chosed_transactions_indexs]
 
         if hasattr(y_noisy, 'values'):
-            y_noisy[target_columns] = y_noisy_values.reshape(-1, 1)
+            y_noisy[target_column] = y_noisy_values.reshape(-1, 1)
         else:
             y_noisy = y_noisy_values
         return y_noisy
@@ -58,10 +58,10 @@ class RandomNoiseStrategy(BaseNoiseStrategy):
 
 
 class NoiseInjector(BaseEstimator, TransformerMixin):
-    def __init__(self, strategy: BaseNoiseStrategy, noise_percentage=10, target_columns=None):
+    def __init__(self, strategy: BaseNoiseStrategy, noise_percentage=10, target_column=None):
         self.strategy = strategy
         self.noise_percentage = noise_percentage
-        self.target_columns = target_columns or ['I-d']
+        self.target_column = target_column
 
     def fit(self, X, y=None):
         return self
@@ -69,5 +69,5 @@ class NoiseInjector(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         if y is None:
             return X, y
-        y_noisy = self.strategy.inject_noise(y, self.noise_percentage, self.target_columns)
+        y_noisy = self.strategy.inject_noise(y, self.noise_percentage, self.target_column)
         return X, y_noisy

@@ -70,7 +70,7 @@ for sequence_composition in sequences_compositions:
                 group_val = X_val.loc[:,sequence_column].values
                 group_test = X_test.loc[:, sequence_column].values
 
-            preprocessor = PreProcessingTransformer(target_columns=[target_column])
+            preprocessor = PreProcessingTransformer(target_column=[target_column])
 
             X_train_array = preprocessor.transform(X_train, y_train)
             y_train_array = preprocessor.get_target()

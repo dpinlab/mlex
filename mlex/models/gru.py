@@ -19,7 +19,7 @@ class GRU(nn.Module, BaseEstimator, ClassifierMixin):
             **kwargs: additional model parameters
         """
         super().__init__()
-        self.params = {
+        self.model_params = {
             'input_size': kwargs.get('input_size', None),
             'hidden_size': kwargs.get('hidden_size', None),
             'num_layers': kwargs.get('num_layers', None),
@@ -38,17 +38,19 @@ class GRU(nn.Module, BaseEstimator, ClassifierMixin):
             'feature_names': kwargs.get('feature_names', None),
             'device': kwargs.get('device', None),
             'validation_data': validation_data,  # tuple of (X_val, y_val)
-            'numeric_features': kwargs.get('numeric_features', None),
-            'categorical_features': kwargs.get('categorical_features', None),
-            'passthrough_features': kwargs.get('passthrough_features', None),
-            'automap_features': kwargs.get('automap_features', None),
+        }
+        self.preprocessor_params = {
+            'numeric_features': kwargs.get('numeric_features', None) or None,
+            'categorical_features': kwargs.get('categorical_features', None) or None,
+            'passthrough_features': kwargs.get('passthrough_features', None) or None,
+            'context_feature': kwargs.get('context_feature', None) or None,
         }
         self.target_column = target_column
         self.categories = categories
         self.final_model = None
         self.model = None
 
-        if self.params['input_size'] is not None:
+        if self.model_params['input_size'] is not None:
             self.model = self._build_model()
 
         self.last_fit_time = 0
@@ -59,14 +61,15 @@ class GRU(nn.Module, BaseEstimator, ClassifierMixin):
 
     def fit(self, X, y, **kwargs):
         # Update params with any new values
-        self.params.update(kwargs)
-        
-        if self.params['input_size'] is None:
-            preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in self.params.items() if '_features' in k}, categories=self.categories, handle_unknown='ignore')
+        self.model_params.update({key: kwargs[key] for key in list(self.model_params.keys()) if key in kwargs})
+        self.preprocessor_params.update({key: kwargs[key] for key in list(self.preprocessor_params.keys()) if key in kwargs})
+
+        if self.model_params['input_size'] is None:
+            preprocessor = PreProcessingTransformer(target_column=[self.target_column], **{k: v for k, v in self.preprocessor_params.items()}, categories=self.categories, handle_unknown='ignore')
             preprocessor.fit(X)
-            self.params['feature_names'] = preprocessor.get_feature_names_out()
-            self.params['input_size'] = self.params['feature_names'].shape[0] - 1
-            self.params['validation_data'] = preprocessor.transform(self.params['validation_data'][0], self.params['validation_data'][1])
+            self.model_params['feature_names'] = preprocessor.get_feature_names_out()
+            self.model_params['input_size'] = self.model_params['feature_names'].shape[0] - 1
+            self.model_params['validation_data'] = preprocessor.transform(self.model_params['validation_data'][0], self.model_params['validation_data'][1])
             self.model = self._build_model()
 
         start = time.perf_counter()
@@ -85,32 +88,35 @@ class GRU(nn.Module, BaseEstimator, ClassifierMixin):
     def _build_model(self):
         # Provide hardcoded defaults if still None
         model_params = {
-            'input_size': self.params.get('input_size', 10) or 10,
-            'hidden_size': self.params.get('hidden_size', 10) or 10,
-            'num_layers': self.params.get('num_layers', 1) or 1,
-            'output_size': self.params.get('output_size', 1) or 1,
-            'seq_length': self.params.get('seq_length', 30) or 30,
-            'batch_size': self.params.get('batch_size', 32) or 32,
-            'shuffle_dataloader': self.params.get('shuffle_dataloader', True) if self.params.get('shuffle_dataloader') is not None else True,
-            'learning_rate': self.params.get('learning_rate', 1e-3) or 1e-3,
-            'alpha': self.params.get('alpha', .9) or .9,
-            'eps': self.params.get('eps', 1e-7) or 1e-7,
-            'weight_decay': self.params.get('weight_decay', 0.0) or 0.0,
-            'epochs': self.params.get('epochs', 30) or 30,
-            'patience': self.params.get('patience', 5) or 5,
-            'group_index': self.params.get('group_index', -1) or -1,
-            'random_seed': self.params.get('random_seed', 42) or 42,
-            'device': self.params.get('device', None),
-            'validation_data': self.params.get('validation_data', None),
-            'numeric_features': self.params.get('numeric_features', ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO']),
-            'categorical_features': self.params.get('categorical_features', ['TIPO', 'CNAB', 'NATUREZA_SALDO']),
-            'passthrough_features': self.params.get('passthrough_features', None),
-            'automap_features': self.params.get('automap_features', ['GROUP']),
+            'input_size': self.model_params.get('input_size', 10) or 10,
+            'hidden_size': self.model_params.get('hidden_size', 10) or 10,
+            'num_layers': self.model_params.get('num_layers', 1) or 1,
+            'output_size': self.model_params.get('output_size', 1) or 1,
+            'seq_length': self.model_params.get('seq_length', 30) or 30,
+            'batch_size': self.model_params.get('batch_size', 32) or 32,
+            'shuffle_dataloader': self.model_params.get('shuffle_dataloader', True) if self.model_params.get('shuffle_dataloader') is not None else True,
+            'learning_rate': self.model_params.get('learning_rate', 1e-3) or 1e-3,
+            'alpha': self.model_params.get('alpha', .9) or .9,
+            'eps': self.model_params.get('eps', 1e-7) or 1e-7,
+            'weight_decay': self.model_params.get('weight_decay', 0.0) or 0.0,
+            'epochs': self.model_params.get('epochs', 30) or 30,
+            'patience': self.model_params.get('patience', 5) or 5,
+            'group_index': self.model_params.get('group_index', -1) or -1,
+            'random_seed': self.model_params.get('random_seed', 42) or 42,
+            'device': self.model_params.get('device', None),
+            'validation_data': self.model_params.get('validation_data', None),
         }
-        self.params.update(model_params)
+        preprocessor_params = {
+            'numeric_features': self.preprocessor_params.get('numeric_features', None) or None,
+            'categorical_features': self.preprocessor_params.get('categorical_features', None) or None,
+            'passthrough_features': self.preprocessor_params.get('passthrough_features', None) or None,
+            'context_feature': self.preprocessor_params.get('context_feature', None) or None,
+        }
+        self.model_params.update(model_params)
+        self.preprocessor_params.update(preprocessor_params)
 
+        preprocessor = PreProcessingTransformer(target_column=[self.target_column], **{k: v for k, v in preprocessor_params.items()}, categories=self.categories, handle_unknown='ignore')
         self.final_model = GRUBaseModel(validation_data=model_params['validation_data'], **{k: v for k, v in model_params.items() if k != 'validation_data'})
-        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in model_params.items() if '_features' in k}, categories=self.categories, handle_unknown='ignore')
         model = Pipeline(steps=[
             ('preprocessor', preprocessor),
             ('final_model', self.final_model)
@@ -119,15 +125,16 @@ class GRU(nn.Module, BaseEstimator, ClassifierMixin):
         return model
 
     def get_feature_names(self):
-        return self.params.get('feature_names')
+        return self.model_params.get('feature_names')
 
     def get_params(self, deep=True):
-        return self.params.copy()
+        return {**self.model_params, **self.preprocessor_params}.copy()
 
     def set_params(self, **parameters):
-        self.params.update(parameters)
+        self.model_params.update({key: parameters[key] for key in list(self.model_params.keys()) if key in parameters})
+        self.preprocessor_params.update({key: parameters[key] for key in list(self.preprocessor_params.keys()) if key in parameters})
         return self
-    
+
     def create_test_loader(self, X, y):
         X = self.model.named_steps['preprocessor'].transform(X)
         return self.final_model._create_dataloader(X, y, shuffle_dataloader=False)

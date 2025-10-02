@@ -42,7 +42,7 @@ with mlflow.start_run(run_name="GRU_without_CNAB_v1"):
     categories = [pd.unique(X_train[col]) for col in ['TIPO', 'NATUREZA_SALDO']]
 
     validation_data = (X_val, y_val)
-    model_GRU = GRU(validation_data=validation_data, target_column='I-d', categories=categories, device=device, categorical_features=['TIPO', 'NATUREZA_SALDO'])
+    model_GRU = GRU(validation_data=validation_data, target_column='I-d', categories=categories, device=device, categorical_features=['TIPO', 'NATUREZA_SALDO'], numeric_features=['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO'], context_feature=['GROUP'])
 
     model_GRU.fit(X_train, y_train)
 

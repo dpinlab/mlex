@@ -19,13 +19,16 @@ threshold_strategy = 'f1max'
 threshold_selection = F1MaxThresholdStrategy()
 
 reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data)
-X = reader.fit_transform(X=None)
-y = reader.get_target()
+df = reader.read_df()
 
 if sequence_composition != 'temporal':
-    X['GROUP'] = X[sequence_column].fillna('Unknown')
+    df['GROUP'] = df[sequence_column]
+    df = df.sort_values(by=['GROUP', 'DATA_LANCAMENTO']).reset_index(drop=True)
 else:
-    X['GROUP'] = 'Unknown'
+    df['GROUP'] = 'Global'
+
+y = df[[target_column]]
+X = df.drop(columns=[target_column], axis=1)
 
 splitter_tt = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.3)
 splitter_tt.fit(X, y)
@@ -38,7 +41,7 @@ X_train, y_train, X_val, y_val = splitter_tv.transform(X_train, y_train)
 categories = [pd.unique(X_train[col]) for col in ['TIPO', 'CNAB', 'NATUREZA_SALDO']]
 
 validation_data = (X_val, y_val)
-model_RNN = RNN(validation_data=validation_data, target_column='I-d', categories=categories, device=device)
+model_RNN = RNN(validation_data=validation_data, target_column='I-d', categories=categories, device=device, numeric_features=['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO'], categorical_features=['TIPO', 'CNAB', 'NATUREZA_SALDO'], context_feature=['GROUP'])
 
 model_RNN.fit(X_train, y_train)
 

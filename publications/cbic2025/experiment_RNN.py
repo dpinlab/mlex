@@ -75,7 +75,7 @@ for sequence_composition in sequences_compositions:
                 ns_categories
             ]
 
-            preprocessor = PreProcessingTransformer(target_columns=[target_column], categories=categories, handle_unknown='ignore')
+            preprocessor = PreProcessingTransformer(target_column=[target_column], categories=categories, handle_unknown='ignore')
             preprocessor.fit(X_train, y_train)
 
             X_train_array = preprocessor.transform(X_train, y_train)
