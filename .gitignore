@@ -177,3 +177,4 @@ test/test_rnn_model.py
 results/
 
 nohup.*
+*.out
