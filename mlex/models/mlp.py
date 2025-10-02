@@ -17,7 +17,7 @@ class MLP(BaseEstimator, ClassifierMixin):
             **kwargs: additional model parameters
         """
         super().__init__()
-        self.params = {
+        self.model_params = {
             'hidden_layer_sizes': kwargs.get('hidden_layer_sizes', None),
             'activation': kwargs.get('activation', None),
             'solver': kwargs.get('solver', None),
@@ -32,10 +32,11 @@ class MLP(BaseEstimator, ClassifierMixin):
             'validation_fraction': kwargs.get('validation_fraction', None),
             'early_stopping': kwargs.get('early_stopping', None),
             'verbose': kwargs.get('verbose', None),
+        }
+        self.preprocessor_params = {
             'numeric_features': kwargs.get('numeric_features', None),
             'categorical_features': kwargs.get('categorical_features', None),
             'passthrough_features': kwargs.get('passthrough_features', None),
-            'automap_features': kwargs.get('automap_features', None),
         }
         self.target_column = target_column
         self.categories = categories
@@ -71,32 +72,32 @@ class MLP(BaseEstimator, ClassifierMixin):
 
     def _build_model(self):
         model_params = {
-            'hidden_layer_sizes': self.params.get('hidden_layer_sizes', (10,)) or (10,),
-            'activation': self.params.get('activation', 'relu') or 'relu',
-            'solver': self.params.get('solver', 'adam') or 'adam',
-            'batch_size': self.params.get('batch_size', 32) or 32,
-            'shuffle': self.params.get('shuffle', True) if self.params.get('shuffle') is not None else True,
-            'learning_rate': self.params.get('learning_rate', 'constant') or 'constant',
-            'learning_rate_init': self.params.get('learning_rate_init', 1e-3) or 1e-3,
-            'alpha': self.params.get('alpha', 0.0001) or 0.0001,
-            'epsilon': self.params.get('epsilon', 1e-8) or 1e-8,
-            'max_iter': self.params.get('max_iter', 100) or 100,
-            'random_state': self.params.get('random_state', None) or None,
-            'validation_fraction': self.params.get('validation_fraction', 0.3) or 0.3,
-            'early_stopping': self.params.get('early_stopping', True) if self.params.get('early_stopping') is not None else True,
-            'verbose': self.params.get('verbose', True) if self.params.get('verbose') is not None else True,
+            'hidden_layer_sizes': self.model_params.get('hidden_layer_sizes', (10,)) or (10,),
+            'activation': self.model_params.get('activation', 'relu') or 'relu',
+            'solver': self.model_params.get('solver', 'adam') or 'adam',
+            'batch_size': self.model_params.get('batch_size', 32) or 32,
+            'shuffle': self.model_params.get('shuffle', True) if self.model_params.get('shuffle') is not None else True,
+            'learning_rate': self.model_params.get('learning_rate', 'constant') or 'constant',
+            'learning_rate_init': self.model_params.get('learning_rate_init', 1e-3) or 1e-3,
+            'alpha': self.model_params.get('alpha', 0.0001) or 0.0001,
+            'epsilon': self.model_params.get('epsilon', 1e-8) or 1e-8,
+            'max_iter': self.model_params.get('max_iter', 100) or 100,
+            'random_state': self.model_params.get('random_state', None) or None,
+            'validation_fraction': self.model_params.get('validation_fraction', 0.3) or 0.3,
+            'early_stopping': self.model_params.get('early_stopping', True) if self.model_params.get('early_stopping') is not None else True,
+            'verbose': self.model_params.get('verbose', True) if self.model_params.get('verbose') is not None else True,
         }
         preprocessor_params = {
-            'numeric_features': self.params.get('numeric_features', ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO']) or ['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO'],
-            'categorical_features': self.params.get('categorical_features', ['TIPO', 'CNAB', 'NATUREZA_SALDO']) or ['TIPO', 'CNAB', 'NATUREZA_SALDO'],
-            'passthrough_features': self.params.get('passthrough_features', None) or None,
-            'automap_features': self.params.get('automap_features', None) or None,
+            'numeric_features': self.preprocessor_params.get('numeric_features', None) or None,
+            'categorical_features': self.preprocessor_params.get('categorical_features', None) or None,
+            'passthrough_features': self.preprocessor_params.get('passthrough_features', None) or None,
+            'context_feature': self.preprocessor_params.get('context_feature', None) or None,
         }
-        self.params.update(model_params)
-        self.params.update(preprocessor_params)
+        self.model_params.update(model_params)
+        self.preprocessor_params.update(preprocessor_params)
 
         self.final_model = MLPClassifier(**{k: v for k, v in model_params.items()})
-        preprocessor = PreProcessingTransformer(target_columns=[self.target_column], **{k: v for k, v in preprocessor_params.items()}, categories=self.categories, handle_unknown='ignore')
+        preprocessor = PreProcessingTransformer(target_column=[self.target_column], **{k: v for k, v in preprocessor_params.items()}, categories=self.categories, handle_unknown='ignore')
         model = Pipeline(steps=[
             ('preprocessor', preprocessor),
             ('final_model', self.final_model)
@@ -108,8 +109,9 @@ class MLP(BaseEstimator, ClassifierMixin):
         return self.model.named_steps['preprocessor'].get_feature_names_out()
 
     def get_params(self, deep=True):
-        return self.params.copy()
+        return {**self.model_params, **self.preprocessor_params}.copy()
 
     def set_params(self, **parameters):
-        self.params.update(parameters)
+        self.model_params.update({key: parameters[key] for key in list(self.model_params.keys()) if key in parameters})
+        self.preprocessor_params.update({key: parameters[key] for key in list(self.preprocessor_params.keys()) if key in parameters})
         return self

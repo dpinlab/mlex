@@ -41,7 +41,7 @@ X_train, y_train, X_val, y_val = splitter_tv.transform(X_train, y_train)
 categories = [pd.unique(X_train[col]) for col in ['TIPO', 'CNAB', 'NATUREZA_SALDO']]
 
 validation_data = (X_val, y_val)
-model_RNN = RNN(validation_data=validation_data, target_column='I-d', categories=categories, device=device)
+model_RNN = RNN(validation_data=validation_data, target_column='I-d', categories=categories, device=device, numeric_features=['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO'], categorical_features=['TIPO', 'CNAB', 'NATUREZA_SALDO'], context_feature=['GROUP'])
 
 model_RNN.fit(X_train, y_train)
 

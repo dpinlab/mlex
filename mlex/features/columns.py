@@ -56,7 +56,7 @@ class PassthroughTransformer(BaseEstimator, TransformerMixin):
         return None
 
 
-class AutoMappingTransformer(BaseEstimator, TransformerMixin):
+class SimpleMapTransformer(BaseEstimator, TransformerMixin):
     def __init__(self):
         pass
     
@@ -82,19 +82,19 @@ class AutoMappingTransformer(BaseEstimator, TransformerMixin):
 
 class CompositeTransformer(BaseEstimator, TransformerMixin):
     
-    def __init__(self, numeric_features, categorical_features, passthrough_features, automap_features, 
+    def __init__(self, numeric_features, categorical_features, passthrough_features, context_feature, 
                  categories='auto', handle_unknown='error') -> None:
         super().__init__()
         self.numeric_features = numeric_features
         self.categorical_features = categorical_features
         self.passthrough_features = passthrough_features
-        self.automap_features = automap_features
+        self.context_feature = context_feature
         self.encoder =  ColumnTransformer(   
             transformers=[
                 ("num", NumericalTransfomer(), self.numeric_features),
                 ("cat", CategoricalOneHotTransfomer(categories=categories,handle_unknown=handle_unknown), self.categorical_features),
                 ("passthrough", PassthroughTransformer(), self.passthrough_features),
-                ("auto_mapped", AutoMappingTransformer(), self.automap_features),
+                ("simple_map", SimpleMapTransformer(), self.context_feature),
             ],
             verbose_feature_names_out=False
         )

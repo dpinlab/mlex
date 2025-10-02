@@ -26,7 +26,7 @@ y_test = reader_test.get_target()
 
 categories = [pd.unique(X_train[col]) for col in ['TIPO', 'CNAB', 'NATUREZA_SALDO']]
 
-model_RF = RandomForest(target_column='I-d', categories=categories)
+model_RF = RandomForest(target_column='I-d', categories=categories, numeric_features=['DIA_LANCAMENTO','MES_LANCAMENTO','VALOR_TRANSACAO','VALOR_SALDO'], categorical_features=['TIPO', 'CNAB', 'NATUREZA_SALDO'])
 
 model_RF.fit(X_train, y_train.values.flatten())
 
