@@ -27,16 +27,15 @@ class PastFutureSplit(BaseSplitStrategy):
     def fit(self, X, y=None):
         df_sorted = X.sort_values(by=[self.timestamp_column]).reset_index(drop=True)
         mid = int(self.proportion * len(df_sorted))
-        train_indices = df_sorted.index[:mid]
-        test_indices = df_sorted.index[mid:-1]
+        self.train_indices_ = df_sorted.index[:mid]
+        self.test_indices_ = df_sorted.index[mid:-1]
 
-        train_df = df_sorted.loc[train_indices]
-        test_df = df_sorted.loc[test_indices]
-
-        # Ensure common CNAB values between splits
-        common_cnab = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
-        self.train_indices_ = train_df[train_df['CNAB'].isin(common_cnab)].index
-        self.test_indices_ = test_df[test_df['CNAB'].isin(common_cnab)].index
+        # train_df = df_sorted.loc[self.train_indices_]
+        # test_df = df_sorted.loc[self.test_indices_]
+        # # Ensure common CNAB values between splits
+        # common_cnab = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
+        # self.train_indices_ = train_df[train_df['CNAB'].isin(common_cnab)].index
+        # self.test_indices_ = test_df[test_df['CNAB'].isin(common_cnab)].index
         return self
 
     def transform(self, X, y):

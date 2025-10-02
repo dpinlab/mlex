@@ -56,4 +56,4 @@ df['DIA_LANCAMENTO'] = df['DATA_LANCAMENTO'].str[8:10].astype(np.uint8)
 
 df = df[[col for col in dtype_dict.keys()]]
 
-df.to_csv(r'/data/pcpe/pcpe_04-2.csv', sep=';', decimal=',', index=False)
+df.to_csv(r'/data/pcpe/pcpe_04.csv', sep=';', decimal=',', index=False)
