@@ -1,6 +1,8 @@
 from .sequence_span_analyzer import SequenceSpanAnalyzer, SequenceSpanCalculator, create_summary_table
 from .sequence_analyzer_plotter import SequenceAnalyzerPlotter
 from .pcpe_data_exploratory_analysis import PCPEDataExploratoryAnalysis
+from .markov_analyzer import MarkovAnalyzer
+from .markov_analyzer_plotter import MarkovAnalyzerPlotter
 
 
 __all__ = [
@@ -9,4 +11,6 @@ __all__ = [
     'create_summary_table',
     'SequenceAnalyzerPlotter',
     'PCPEDataExploratoryAnalysis',
+    'MarkovAnalyzer',
+    'MarkovAnalyzerPlotter',
 ]
