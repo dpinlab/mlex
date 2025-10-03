@@ -3,7 +3,7 @@ from mlex.utils.utils import ensure_directory_exists
 
 
 class MarkovAnalyzer:
-    def __init__(self, model):
+    def __init__(self):
         pass
 
     def analyze(self, array_data, column_name, path_save, verbose=True):
