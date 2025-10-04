@@ -4,6 +4,7 @@ Money Laundering Expert System (MLEX)
 A comprehensive machine learning framework for financial fraud detection and money laundering prevention.
 """
 
+from .analysis import *
 from .evaluation import *
 from .features import *
 from .models import *
@@ -30,4 +31,11 @@ __all__ = [
     # Features
     "SequenceDataset",
     "SequenceTransformer",
+
+    # Analysis
+    "MarkovAnalyzer",
+    "MarkovAnalyzerPlotter",
+    "SequenceSpanAnalyzer",
+    "SequenceSpanCalculator",
+    "PCPEDataExploratoryAnalysis",
 ]
