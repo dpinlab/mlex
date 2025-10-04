@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 import torch
-from mlex import DataReader
+from mlex import DataReader, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import AgglomerativeClustering
@@ -26,9 +26,8 @@ device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 target_column = 'I-d'
 filter_data = {}
 
-reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data)
-X = reader.fit_transform(X=None)
-y = reader.get_target()
+reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data, dtype_dict=get_pcpe_dtype_dict(), preprocessing_func=pcpe_preprocessing_read_func)
+X, y = reader.get_X_y()
 
 
 

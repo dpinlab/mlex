@@ -7,7 +7,7 @@ from mlex import ensure_directory_exists
 from mlex import SequenceSpanAnalyzer
 from mlex import create_summary_table
 from mlex import SequenceAnalyzerPlotter
-from mlex import DataReader
+from mlex import DataReader, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
     output_dir = join(abspath(join(__file__, "..")), "03_sequence_days_analysis")
     ensure_directory_exists(output_dir)
 
-    reader = DataReader(data_path, target_columns=[target_column], filter_dict=filter_data)
+    reader = DataReader(data_path, target_columns=[target_column], filter_dict=filter_data, dtype_dict=get_pcpe_dtype_dict(), preprocessing_func=pcpe_preprocessing_read_func)
     df = reader.read_df()
     df['DATA_LANCAMENTO2'] = (df['DATA_LANCAMENTO'].astype(int) // 10**9 // 86400)
     df['DATA_LANCAMENTO3'] = df['DATA_LANCAMENTO2'] - (df['DATA_LANCAMENTO2'][0]-1)

@@ -5,7 +5,7 @@ import mlflow, mlflow.sklearn
 import torch
 import pandas as pd
 import numpy as np
-from mlex import LSTM, DataReader, FeatureStratifiedSplit, F1MaxThresholdStrategy, StandardEvaluator, make_json_serializable
+from mlex import LSTM, DataReader, FeatureStratifiedSplit, F1MaxThresholdStrategy, StandardEvaluator, make_json_serializable, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 
 EXPERIMENT = "fraud-detection_nn"
 MODEL_NAME = "lstm_baseline_Id_without_cnab"
@@ -24,13 +24,11 @@ mlflow.set_experiment(EXPERIMENT)
 
 
 with mlflow.start_run(run_name="LSTM_without_CNAB_v1"):
-    reader_train = DataReader(path_train, target_columns=[target_column], filter_dict=filter_data)
-    X = reader_train.fit_transform(X=None)
-    y = reader_train.get_target()
+    reader_train = DataReader(path_train, target_columns=[target_column], filter_dict=filter_data, dtype_dict=get_pcpe_dtype_dict(), preprocessing_func=pcpe_preprocessing_read_func)
+    X, y = reader_train.get_X_y()
 
-    reader_test = DataReader(path_test, target_columns=[target_column], filter_dict=filter_data)
-    X_test = reader_test.fit_transform(X=None)
-    y_test = reader_test.get_target()
+    reader_test = DataReader(path_test, target_columns=[target_column], filter_dict=filter_data, dtype_dict=get_pcpe_dtype_dict(), preprocessing_func=pcpe_preprocessing_read_func)
+    X_test, y_test = reader_test.get_X_y()
 
     X['GROUP'] = 'Unknown'
     X_test['GROUP'] = 'Unknown'
