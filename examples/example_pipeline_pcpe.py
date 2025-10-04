@@ -5,7 +5,7 @@ sys.path.append(abspath(join(__file__ , "..", "..")))
 import torch
 import numpy as np
 import pandas as pd
-from mlex import DataReader, FeatureStratifiedSplit, RNN, F1MaxThresholdStrategy, StandardEvaluator
+from mlex import DataReader, FeatureStratifiedSplit, RNN, F1MaxThresholdStrategy, StandardEvaluator, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 
 path = r'/data/pcpe/pcpe_03.csv'
 target_column = 'I-d'
@@ -18,7 +18,7 @@ device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 threshold_strategy = 'f1max'
 threshold_selection = F1MaxThresholdStrategy()
 
-reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data)
+reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data, dtype_dict=get_pcpe_dtype_dict(), preprocessing_func=pcpe_preprocessing_read_func)
 df = reader.read_df()
 
 if sequence_composition != 'temporal':

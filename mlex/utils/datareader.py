@@ -1,16 +1,52 @@
 import pandas as pd
-from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class DataReader(BaseEstimator, TransformerMixin):
-    def __init__(self, data_path, target_columns, filter_dict=None):
+class DataReader():
+    def __init__(self, data_path, target_columns, filter_dict=None, dtype_dict=None, preprocessing_func=None):
         self.data_path = data_path
         self.target_columns = target_columns
         self.filter_dict = filter_dict
         self.X = None
         self.y = None
 
-        self.dtype_dict = {
+        self.dtype_dict = dtype_dict
+        self.preprocessing_func = preprocessing_func
+
+    def read_df(self):
+        df = pd.read_csv(
+            self.data_path,
+            sep=';',
+            decimal=',',
+            dtype=self.dtype_dict,
+            low_memory=False
+        )
+
+        df = df.loc[~df.duplicated()]
+
+        if self.preprocessing_func:
+            df = self.preprocessing_func(df)
+
+        if self.filter_dict:
+            for col, val in self.filter_dict.items():
+                df = df[df[col] == val]
+
+        return df.reset_index(drop=True)
+
+    def get_X_y(self):
+        df = self.read_df()
+        self.y = df[self.target_columns]
+        self.X = df.drop(columns=self.target_columns, axis=1)
+        return self.X, self.y
+
+    def get_X(self):
+        return self.X
+
+    def get_y(self):
+        return self.y
+
+
+def get_pcpe_dtype_dict():
+    return {
             'NUMERO_CASO': 'str',
             'NUMERO_BANCO': 'str',
             'NOME_BANCO': 'str',
@@ -47,48 +83,22 @@ class DataReader(BaseEstimator, TransformerMixin):
             'ANO_LANCAMENTO': 'uint16'
         }
 
-    def read_df(self):
-        df = pd.read_csv(
-            self.data_path,
-            sep=';',
-            decimal=',',
-            dtype=self.dtype_dict,
-            low_memory=False
-        )
 
-        df = df.loc[~df.duplicated()]
-
-        df['CONTA_TITULAR'] = (
+def pcpe_preprocessing_read_func(df):
+    df['CONTA_TITULAR'] = (
                 df['NUMERO_BANCO'] + '_' +
                 df['NUMERO_AGENCIA'] + '_' +
                 df['NUMERO_CONTA']
         )
-        df['CONTA_OD'] = (
-                df['NUMERO_BANCO_OD'] + '_' +
-                df['NUMERO_AGENCIA_OD'] + '_' +
-                df['NUMERO_CONTA_OD'].astype(str)
-        )
-        df['CONTA_OD'] = df['CONTA_OD'].fillna('EMPTY')
-        df.loc[df['CONTA_OD'].str.contains('0_0'), 'CONTA_OD'] = 'EMPTY'
+    df['CONTA_OD'] = (
+            df['NUMERO_BANCO_OD'] + '_' +
+            df['NUMERO_AGENCIA_OD'] + '_' +
+            df['NUMERO_CONTA_OD'].astype(str)
+    )
+    df['CONTA_OD'] = df['CONTA_OD'].fillna('EMPTY')
+    df.loc[df['CONTA_OD'].str.contains('0_0'), 'CONTA_OD'] = 'EMPTY'
 
-        df['DATA_LANCAMENTO'] = pd.to_datetime(df['DATA_LANCAMENTO'])
-        df = df.sort_values(['DATA_LANCAMENTO']).reset_index(drop=True)
+    df['DATA_LANCAMENTO'] = pd.to_datetime(df['DATA_LANCAMENTO'])
+    df = df.sort_values(['DATA_LANCAMENTO']).reset_index(drop=True)
 
-        if self.filter_dict:
-            for col, val in self.filter_dict.items():
-                df = df[df[col] == val]
-
-        return df.reset_index(drop=True)
-    
-   
-    def fit(self, X=None, y=None):
-        df = self.read_df()
-        self.y = df[self.target_columns]
-        self.X = df.drop(columns=self.target_columns, axis=1)
-        return self
-
-    def transform(self, X=None):
-        return self.X
-
-    def get_target(self):
-        return self.y
+    return df

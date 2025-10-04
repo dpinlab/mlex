@@ -10,7 +10,7 @@ from copy import deepcopy
 from mlex.features.sequences import SequenceTransformer
 from mlex import FeatureStratifiedSplit
 from mlex import PreProcessingTransformer
-from mlex import DataReader
+from mlex import DataReader, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 from mlex import StandardEvaluator
 from mlex import F1MaxThresholdStrategy
 from mlex.models.models import GRUModel
@@ -35,9 +35,8 @@ path = r'/data/pcpe/pcpe_03.csv'
 
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
-reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data)
-X = reader.fit_transform(X=None)
-y = reader.get_target()
+reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data, dtype_dict=get_pcpe_dtype_dict(), preprocessing_func=pcpe_preprocessing_read_func)
+X, y = reader.get_X_y()
 
 final_models = []
 
