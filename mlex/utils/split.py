@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 
 
 class BaseSplitStrategy(BaseEstimator, TransformerMixin, ABC):
-    def __init__(self, timestamp_column='DATA_LANCAMENTO'):
+    def __init__(self, timestamp_column):
         super().__init__()
         self.timestamp_column = timestamp_column
 
@@ -18,7 +18,7 @@ class BaseSplitStrategy(BaseEstimator, TransformerMixin, ABC):
 
 
 class PastFutureSplit(BaseSplitStrategy):
-    def __init__(self, timestamp_column=None, proportion=0.5):
+    def __init__(self, timestamp_column, proportion=0.5):
         super().__init__(timestamp_column)
         self.proportion = proportion
         self.train_indices_ = None
