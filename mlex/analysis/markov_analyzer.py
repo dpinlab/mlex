@@ -1,4 +1,5 @@
 import pandas as pd
+import networkx as nx
 from mlex.utils.utils import ensure_directory_exists
 
 
@@ -42,5 +43,20 @@ class MarkovAnalyzer:
         ensure_directory_exists(path_save)
         frequencies.to_csv(f"{path_save}/frequencies_{column_name.lower()}.csv", index=False)
         probability_matrix.to_csv(f"{path_save}/probability_matrix_{column_name.lower()}.csv", index=False)
-
+        network = self.__build_networkx_graph(probability_matrix)
+        
+        nx.write_gml(network, f"{path_save}/markov_network_{column_name.lower()}.gml")
         return frequencies, probability_matrix
+    
+    def __build_networkx_graph(self, probability_matrix):
+        
+
+        G = nx.DiGraph()
+
+        for from_state in probability_matrix.index:
+            for to_state in probability_matrix.columns:
+                prob = probability_matrix.loc[from_state, to_state]
+                if prob > 0 and from_state != to_state:
+                    G.add_edge(from_state, to_state, weight=float(prob))
+
+        return G
