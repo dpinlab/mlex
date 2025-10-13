@@ -14,7 +14,7 @@ from mlex import PreProcessingTransformer
 from mlex import DataReader
 from mlex import StandardEvaluator
 from mlex import F1MaxThresholdStrategy
-from mlex import RNN
+from mlex import GRU
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import AgglomerativeClustering
@@ -100,15 +100,15 @@ for cluster_name, cluster_model in cluster_algorithms.items():
             X_train, y_train, X_val, y_val = splitter_tv.transform(X_train_full, y_train_full)
         
             validation_data = (X_val, y_val)
-            model_RNN = RNN(validation_data=validation_data, target_column=target_column, seq_length = sequence_length, numeric_features= [col for col in X_train.columns if (col != timestamp_column and col != 'GROUP')],context_feature=['GROUP'],device=device)
+            model_GRU = GRU(validation_data=validation_data, target_column=target_column, seq_length = sequence_length, numeric_features= [col for col in X_train.columns if (col != timestamp_column and col != 'GROUP')],context_feature=['GROUP'],device=device)
 
-            model_RNN.fit(X_train, y_train)
+            model_GRU.fit(X_train, y_train)
 
-            y_pred_score = model_RNN.score_samples(X_test)
+            y_pred_score = model_GRU.score_samples(X_test)
 
-            y_true = model_RNN.get_y_true_sequences(X_test, y_test)
+            y_true = model_GRU.get_y_true_sequences(X_test, y_test)
 
-            evaluator = StandardEvaluator(f"RNN_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}", threshold_selection)
+            evaluator = StandardEvaluator(f"GRU_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}", threshold_selection)
             evaluator.evaluate(np.array(y_true), [], y_pred_score)
             print(evaluator.summary())
             print('\n')
