@@ -8,7 +8,7 @@ from mlex.utils.preprocessing import PreProcessingTransformer
 
 
 class RNN(nn.Module, BaseEstimator, ClassifierMixin):
-    def __init__(self, validation_data, target_column=None, categories=None,  **kwargs):
+    def __init__(self, validation_data, target_column=None, categories=None, **kwargs):
         """
         Initialize RNN model.
         
