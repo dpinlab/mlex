@@ -26,7 +26,7 @@ clusters = ['kmeans', 'gmm', 'agglomerative']
 
 save_path = join("results", f"{num_layers}-layer")
 ensure_directory_exists(save_path)
-plotter = EvaluationPlotter(f"results_different_clusters/evaluation.parquet")
+plotter = EvaluationPlotter(f"results/evaluation.parquet")
 
 # Generate the strings
 
@@ -47,7 +47,7 @@ for curve in curves:
     cl = curve["cluster"]
     ids = []
     for model, length, threshold, i in product(models, lengths, thresholds_list, range(iterations)):
-        model_id = f"{model}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{length}_{seq}_{threshold}_Iteration-{i+1}_{cl}"
+        model_id = f"{model}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{length}_{seq}_{threshold}_{cl}"
         ids.append(model_id)
     curve_model_ids.append(ids)
 

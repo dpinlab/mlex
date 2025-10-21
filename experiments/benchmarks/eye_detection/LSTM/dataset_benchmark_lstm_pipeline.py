@@ -108,7 +108,7 @@ for cluster_name, cluster_model in cluster_algorithms.items():
 
             y_true = model_LSTM.get_y_true_sequences(X_test, y_test)
 
-            evaluator = StandardEvaluator(f"LSTM_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}", threshold_selection)
+            evaluator = StandardEvaluator(f"LSTM_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_{cluster_name}", threshold_selection)
             evaluator.evaluate(np.array(y_true), [], y_pred_score)
             print(evaluator.summary())
             print('\n')
