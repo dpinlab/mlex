@@ -102,7 +102,7 @@ class LSTM(nn.Module, BaseEstimator, ClassifierMixin):
             'epochs': self.model_params.get('epochs', 30) or 30,
             'patience': self.model_params.get('patience', 5) or 5,
             'group_index': self.model_params.get('group_index', -1) or -1,
-            'random_seed': self.model_params.get('random_seed', 42) or 42,
+            'random_seed': self.model_params.get('random_seed', None),
             'device': self.model_params.get('device', None),
             'validation_data': self.model_params.get('validation_data', None),
         }
