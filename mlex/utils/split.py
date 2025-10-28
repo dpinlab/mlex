@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 
 
 class BaseSplitStrategy(BaseEstimator, TransformerMixin, ABC):
-    def __init__(self, timestamp_column='DATA_LANCAMENTO'):
+    def __init__(self, timestamp_column):
         super().__init__()
         self.timestamp_column = timestamp_column
 
@@ -18,17 +18,18 @@ class BaseSplitStrategy(BaseEstimator, TransformerMixin, ABC):
 
 
 class PastFutureSplit(BaseSplitStrategy):
-    def __init__(self, timestamp_column='DATA_LANCAMENTO', proportion=0.5):
+    def __init__(self, timestamp_column=None, proportion=0.5):
         super().__init__(timestamp_column)
         self.proportion = proportion
         self.train_indices_ = None
         self.test_indices_ = None
 
     def fit(self, X, y=None):
-        df_sorted = X.sort_values(by=[self.timestamp_column]).reset_index(drop=True)
-        mid = int(self.proportion * len(df_sorted))
-        self.train_indices_ = df_sorted.index[:mid]
-        self.test_indices_ = df_sorted.index[mid:-1]
+        if self.timestamp_column:
+            X = X.sort_values(by=[self.timestamp_column]).reset_index(drop=True)
+        mid = int(self.proportion * len(X))
+        self.train_indices_ = X.index[:mid]
+        self.test_indices_ = X.index[mid:-1]
 
         # train_df = df_sorted.loc[self.train_indices_]
         # test_df = df_sorted.loc[self.test_indices_]
@@ -84,11 +85,22 @@ class FeatureStratifiedSplit(BaseSplitStrategy):
                 duplicates='drop'
             )
 
-        train_accounts, test_accounts = train_test_split(
-            accounts_df[self.column_to_stratify], 
+        accounts_ratio_pos = accounts_df[accounts_df['id_ratio'] > 0]
+        accounts_ratio_zero = accounts_df[accounts_df['id_ratio'] == 0]
+        
+        train_with_pos, test_with_pos = train_test_split(
+            accounts_ratio_pos[self.column_to_stratify], 
             test_size=self.test_proportion, 
-            stratify=accounts_df["cluster"]
+            stratify=accounts_ratio_pos["cluster"]
         )
+
+        train_only_zero, test_only_zero = train_test_split(
+            accounts_ratio_zero[self.column_to_stratify],
+            test_size=0.5
+        )
+
+        train_accounts = list(train_with_pos) + list(train_only_zero)
+        test_accounts = list(test_with_pos) + list(test_only_zero)
 
         self.train_indices_ = X[X[self.column_to_stratify].isin(train_accounts)].index
         self.test_indices_ = X[X[self.column_to_stratify].isin(test_accounts)].index

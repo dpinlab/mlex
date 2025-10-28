@@ -9,3 +9,5 @@ torch
 shap
 pyarrow
 skorch
+scipy
+seaborn

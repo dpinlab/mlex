@@ -91,10 +91,12 @@ class RNNBaseModel(nn.Module):
         return "RNNBaseModel"
 
     def fit(self, X, y):
-        torch.cuda.manual_seed(self.random_seed)
-        random.seed(self.random_seed)
-        np.random.seed(self.random_seed)
-        torch.manual_seed(self.random_seed)
+        if self.random_seed is not None:
+
+            torch.cuda.manual_seed(self.random_seed)
+            random.seed(self.random_seed)
+            np.random.seed(self.random_seed)
+            torch.manual_seed(self.random_seed)
 
         self.__fit_core(X, y)
         self.fitted_ = True

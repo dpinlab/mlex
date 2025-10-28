@@ -151,12 +151,12 @@ class EvaluationPlotter:
             interpolated_prs.append(interp_pr)
         return common_rr, interpolated_prs
 
-    def plot_roc_curve_with_ci(self, model_groups: List[List[str]], ax=None):
+    def plot_roc_curve_with_ci(self, model_groups: List[List[str]], ax=None, colors=None, labels=None, shade = True):
         if not ax:
             fig, ax = plt.subplots()
         ax.plot([0, 1], [0, 1], "k--", linewidth=4, label='Random Classifier')
 
-        for group in model_groups:
+        for idx,group in enumerate(model_groups):
             fpr_list, tpr_list, auc_list = [], [], []
             for model_id in group:
                 row = self.df[self.df['model_id'] == model_id].squeeze()
@@ -175,15 +175,21 @@ class EvaluationPlotter:
             mean_auc = np.mean(auc_list)
             std_auc = np.std(auc_list)
             context = group[0].split('_')[4].capitalize()
-            ax.plot(common_fpr, mean_tpr, linewidth=4,
-                    label=f"{context} Context (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
-            ax.fill_between(common_fpr, ci_lower, ci_upper, alpha=0.3)
 
+            label_text = labels[idx] if labels else f"Curve {idx+1}"
+
+            color = colors[idx] if colors and idx < len(colors) else None
+
+            ax.plot(common_fpr, mean_tpr, linewidth=4,color=color,
+                    label=f"{label_text} Context (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
+            
+            if shade:
+                ax.fill_between(common_fpr, ci_lower, ci_upper, alpha=0.3, color=color)
         ax.set(xlim=[0, 1], ylim=[0, 1.05],
                xlabel="False Positive Rate",
                ylabel="True Positive Rate",
                title=f"ROC Curve with 95% CI\n{model_groups[0][0].split('_')[0].upper()}")
-        ax.legend(loc="lower right")
+        ax.legend(fontsize=6,loc="lower right")
         return ax
 
     def plot_pr_curve_with_ci(self, model_groups: List[List[str]], ax=None):
