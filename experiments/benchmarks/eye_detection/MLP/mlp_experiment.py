@@ -11,7 +11,7 @@ import pandas as pd
 import itertools
 
 
-path = r'/data/isa/EEG_Eye_State_com_timestamp.arff'
+path = r'/data/eeg_eyestate/EEG_Eye_State.csv'
 
 target_column = 'eyeDetection'
 filter_data = {}
@@ -20,22 +20,15 @@ threshold_selection = F1MaxThresholdStrategy()
 
 
 
-reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data)
-reader.dtype_dict = {}  
+reader = DataReader(path, target_columns=[target_column] )
+X_full,y_full = reader.get_X_y()
 
-X_full = reader.fit_transform(X=None)
-y_full = reader.get_target()
 
 
 y_full[target_column] = y_full[target_column].astype(int)
 
 
 X_full = X_full.drop(columns=["Timestamp"])
-
-
-X_full = X_full.drop([10386,11509,898]) 
-y_full = y_full.drop([10386,11509,898]) 
-
 
 
 splitter_tt = PastFutureSplit(proportion=0.75)

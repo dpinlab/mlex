@@ -14,7 +14,8 @@ from sklearn.cluster import AgglomerativeClustering
 import pandas as pd
 
 def main():
-    data_path = r'/data/isa/EEG_Eye_State_com_timestamp.arff'
+    data_path = r'/data/eeg_eyestate/EEG_Eye_State.csv'
+
     sequence_lengths = [10, 20, 30, 40, 50]
     sequences_compositions = ['Baseline', 'kmeans', 'gmm', 'agglomerative']
 
@@ -35,7 +36,7 @@ def main():
     output_dir = join(abspath(join(__file__, "..")), "sequence_analysis_results")
     ensure_directory_exists(output_dir)
 
-    reader = DataReader(data_path, target_columns=[target_column], filter_dict=filter_data)
+    reader = DataReader(data_path, target_columns=[target_column])
     
 
 
@@ -51,7 +52,7 @@ def main():
 
         #df = df.drop([10386,11509,898]) 
         df2 = df.copy()
-        X_full = reader.fit_transform(X=None)
+        X_full,y_full = reader.get_X_y()
         X_numeric = X_full.drop(columns=['Timestamp'])
 
         seq_col = sequence_column_dict[composition]

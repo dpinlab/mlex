@@ -11,23 +11,18 @@ from mlex import DataReader, RandomForest, F1MaxThresholdStrategy, StandardEvalu
 import itertools
 import pandas as pd
 
-path = r'/data/isa/EEG_Eye_State_com_timestamp.arff'
+path = r'/data/eeg_eyestate/EEG_Eye_State.csv'
 
 target_column = 'eyeDetection'
 filter_data = {}
 threshold_strategy = 'f1max'
 threshold_selection = F1MaxThresholdStrategy()
 
-reader = DataReader(path, target_columns=[target_column], filter_dict=filter_data)
-X_full = reader.fit_transform(X=None)
-y_full = reader.get_target()
+reader = DataReader(path, target_columns=[target_column] )
+X_full,y_full = reader.get_X_y()
+
 
 X_full = X_full.drop(columns=["Timestamp"])
-
-
-X_full = X_full.drop([10386,11509,898]) 
-y_full = y_full.drop([10386,11509,898]) 
-
 
 y_full[target_column] = y_full[target_column].astype(int)
 
@@ -66,7 +61,7 @@ for n, depth, split, leaf in combinations:
         min_samples_split=split,
         min_samples_leaf=leaf,
         verbose=True,
-        numeric_features= X_train_full.columns, 
+        numeric_features= X_train_full.columns.to_list(), 
         categorical_features=[]  )
 
     model_RF.fit(X_train_full, y_train_full.values.flatten())

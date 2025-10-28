@@ -18,17 +18,18 @@ class BaseSplitStrategy(BaseEstimator, TransformerMixin, ABC):
 
 
 class PastFutureSplit(BaseSplitStrategy):
-    def __init__(self, timestamp_column, proportion=0.5):
+    def __init__(self, timestamp_column=None, proportion=0.5):
         super().__init__(timestamp_column)
         self.proportion = proportion
         self.train_indices_ = None
         self.test_indices_ = None
 
     def fit(self, X, y=None):
-        df_sorted = X.sort_values(by=[self.timestamp_column]).reset_index(drop=True)
-        mid = int(self.proportion * len(df_sorted))
-        self.train_indices_ = df_sorted.index[:mid]
-        self.test_indices_ = df_sorted.index[mid:-1]
+        if self.timestamp_column:
+            X = X.sort_values(by=[self.timestamp_column]).reset_index(drop=True)
+        mid = int(self.proportion * len(X))
+        self.train_indices_ = X.index[:mid]
+        self.test_indices_ = X.index[mid:-1]
 
         # train_df = df_sorted.loc[self.train_indices_]
         # test_df = df_sorted.loc[self.test_indices_]
