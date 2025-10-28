@@ -10,5 +10,4 @@ shap
 pyarrow
 skorch
 scipy
-liac-arff
 seaborn
