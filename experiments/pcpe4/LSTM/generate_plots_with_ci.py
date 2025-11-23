@@ -1,7 +1,7 @@
 import os
 import sys
 
-module_path = os.path.abspath(os.path.join('../../../..'))
+module_path = os.path.abspath(os.path.join('../../../'))
 if module_path not in sys.path:
     sys.path.append(module_path)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -16,7 +16,7 @@ def ensure_directory_exists(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-models    = ['GRU']
+models    = ['LSTM']
 lengths   = ['10', '20', '30', '40', '50']
 thresholds_list = ['f1max']
 iterations = 10
@@ -24,13 +24,7 @@ iteration = 10
 num_layers = 1
 hidden_size = 10
 
-experiment_names = ['temporal', 'kmeans', 'gmm', 'agglomerative']
-sequence_mapping = {
-    'temporal': 'temporal', 
-    'kmeans': 'feature', 
-    'gmm': 'feature', 
-    'agglomerative': 'feature'
-}
+sequences_compositions = ['temporal', 'Feature_individual', 'Feature_account']
 
 save_path = join("results", f"{num_layers}-layer")
 ensure_directory_exists(save_path)
@@ -38,25 +32,41 @@ plotter = EvaluationPlotter(f"evaluation.parquet")
 
 # Generate the strings
 formatted_ids = [
-    f"{model}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{length}_{sequence_mapping[exp_name]}_{threshold}_Iteration-{i+1}_{exp_name}"
-    for model, length, threshold, i, exp_name in product(
-        models, lengths, thresholds_list, range(iterations), experiment_names
+    f"{model}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{length}_{seq_comp}_{threshold}_Iteration-{i+1}"
+    for model, length, threshold, i, seq_comp in product(
+        models, lengths, thresholds_list, range(iterations), sequences_compositions
     )
 ]
 
-def get_label(group_id: str):
-    """Gera o label usando o nome do experimento e a composição da sequência."""
-    parts = group_id.split('_')
-    experiment_name = parts[-1].capitalize()  
-    sequence_composition = parts[4].capitalize()   
-    return f"{experiment_name} ({sequence_composition})"
 
+def get_label(group_id: str):
+    """
+    Gera o label procurando as chaves de composição (temporal, Feature_...) 
+    na string do ID (mais robusto que usar o índice fixo parts[4]).
+    """
+    label_mapping = {
+        'temporal': 'Temporal Context',
+        'Feature_individual': 'Feature (Individual) Context',
+        'Feature_account': 'Feature (Account) Context',
+    }
+    
+    if 'Feature_individual' in group_id:
+        return label_mapping['Feature_individual']
+    elif 'Feature_account' in group_id:
+        return label_mapping['Feature_account']
+    elif 'temporal' in group_id:
+        return label_mapping['temporal']
+  
+    if 'Feature' in group_id:
+        return "Feature Context (Old ID Format)" 
+        
+    return "Unknown Context"
 
 for sequence_length in lengths:
     model_ids_for_length = [
         [mid for mid in formatted_ids 
-         if f"SequenceLength-{sequence_length}_" in mid and f"_{exp_name}" in mid]
-        for exp_name in experiment_names
+         if f"SequenceLength-{sequence_length}_" in mid and f"_{seq_comp}_" in mid]
+        for seq_comp in sequences_compositions
     ]
 
     # remove grupos vazios

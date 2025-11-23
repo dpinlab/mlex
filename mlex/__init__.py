@@ -15,7 +15,10 @@ __all__ = [
     "GRU",
     "LSTM", 
     "RNN",
-    
+    "BIRNN",
+    "BILSTM",
+    "BIGRU",
+
     # Evaluation
     "StandardEvaluator",
     "F1MaxThresholdStrategy",

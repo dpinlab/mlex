@@ -16,7 +16,7 @@ def ensure_directory_exists(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-models    = ['GRU']
+models    = ['BILSTM']
 lengths   = ['10', '20', '30', '40', '50']
 thresholds_list = ['f1max']
 iterations = 10

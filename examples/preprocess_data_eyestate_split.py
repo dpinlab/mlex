@@ -11,7 +11,7 @@ from mlex import DataReader, PreProcessingTransformer, ContextAware,PastFutureSp
 import torch
 data_path = r'/data/eeg_eyestate/EEG_Eye_State.arff'
 output_dir = r'/data/eeg_eyestate'
-base_filename = 'EEG_Eye_State'
+base_filename = 'EEG_Eye_State_inverted'
 output_base_path = os.path.join(output_dir, f'{base_filename}.csv')
 target_column = 'eyeDetection'
 timestamp_column= 'Timestamp'
@@ -23,6 +23,12 @@ with open(data_path, 'r') as f:
 
 columns = [attr[0] for attr in raw['attributes']]
 df = pd.DataFrame(raw['data'], columns=columns)
+
+######### invertendo y ########
+df[target_column] = df[target_column].astype(int)
+df[target_column] = 1 - df[target_column]
+
+################################
 
 
 ### Adding timestamp column
@@ -103,7 +109,7 @@ for cluster_name in cluster_names:
 
     df_train_clustered_output = pd.concat([X_train_output, y_train_labeled], axis=1)
 
-    output_train_path = os.path.join(output_dir, f'{base_filename}_{cluster_name}_train.csv')
+    output_train_path = os.path.join(output_dir, f'{base_filename}_{cluster_name}_train_inverted.csv')
     df_train_clustered_output.to_csv(output_train_path, sep=';', decimal=',', index=False)
     print(f"CSV clusterizado (TRAIN) salvo: {output_train_path}")
 
@@ -116,7 +122,7 @@ for cluster_name in cluster_names:
 
     df_test_clustered_output = pd.concat([X_test_output, y_test_labeled], axis=1)
 
-    output_test_path = os.path.join(output_dir, f'{base_filename}_{cluster_name}_test.csv')
+    output_test_path = os.path.join(output_dir, f'{base_filename}_{cluster_name}_test_inverted.csv')
     df_test_clustered_output.to_csv(output_test_path, sep=';', decimal=',', index=False)
     print(f"CSV clusterizado (TEST) salvo: {output_test_path}")
 print("\nProcessamento e salvamento de todos os CSVs concluído.")

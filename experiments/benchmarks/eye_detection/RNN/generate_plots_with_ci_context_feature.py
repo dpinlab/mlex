@@ -16,21 +16,15 @@ def ensure_directory_exists(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-models    = ['GRU']
+models    = ['RNN']
+sequences = ['temporal', 'feature']
 lengths   = ['10', '20', '30', '40', '50']
 thresholds_list = ['f1max']
 iterations = 10
 iteration = 10
+clusters = ['kmeans', 'gmm', 'agglomerative'] 
 num_layers = 1
 hidden_size = 10
-
-experiment_names = ['temporal', 'kmeans', 'gmm', 'agglomerative']
-sequence_mapping = {
-    'temporal': 'temporal', 
-    'kmeans': 'feature', 
-    'gmm': 'feature', 
-    'agglomerative': 'feature'
-}
 
 save_path = join("results", f"{num_layers}-layer")
 ensure_directory_exists(save_path)
@@ -38,30 +32,28 @@ plotter = EvaluationPlotter(f"evaluation.parquet")
 
 # Generate the strings
 formatted_ids = [
-    f"{model}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{length}_{sequence_mapping[exp_name]}_{threshold}_Iteration-{i+1}_{exp_name}"
-    for model, length, threshold, i, exp_name in product(
-        models, lengths, thresholds_list, range(iterations), experiment_names
+    f"{model}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{length}_{sequence}_{threshold}_Iteration-{i+1}"
+    for model, length, sequence, threshold, i in product(
+        models, lengths, sequences, thresholds_list, range(iterations)
     )
 ]
-
 def get_label(group_id: str):
-    """Gera o label usando o nome do experimento e a composição da sequência."""
     parts = group_id.split('_')
-    experiment_name = parts[-1].capitalize()  
-    sequence_composition = parts[4].capitalize()   
-    return f"{experiment_name} ({sequence_composition})"
+    sequence = parts[4].capitalize()   
+    return f"Contexto: {sequence}"
+
 
 
 for sequence_length in lengths:
     model_ids_for_length = [
         [mid for mid in formatted_ids 
-         if f"SequenceLength-{sequence_length}_" in mid and f"_{exp_name}" in mid]
-        for exp_name in experiment_names
+         if f"SequenceLength-{sequence_length}_" in mid and f"_{seq}_" in mid]
+        for seq in sequences # Agrupando apenas por sequências (temporal/feature)
     ]
 
     # remove grupos vazios
     model_ids_for_length = [g for g in model_ids_for_length if g]
-
+    
     if not model_ids_for_length:  
         continue
 

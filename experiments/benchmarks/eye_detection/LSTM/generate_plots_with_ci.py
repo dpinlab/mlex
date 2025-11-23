@@ -17,14 +17,20 @@ def ensure_directory_exists(path: str) -> None:
 
 
 models    = ['LSTM']
-sequences = ['feature', 'temporal']
 lengths   = ['10', '20', '30', '40', '50']
 thresholds_list = ['f1max']
 iterations = 10
 iteration = 10
-clusters = ['kmeans', 'gmm', 'agglomerative'] 
 num_layers = 1
 hidden_size = 10
+
+experiment_names = ['temporal', 'kmeans', 'gmm', 'agglomerative']
+sequence_mapping = {
+    'temporal': 'temporal', 
+    'kmeans': 'feature', 
+    'gmm': 'feature', 
+    'agglomerative': 'feature'
+}
 
 save_path = join("results", f"{num_layers}-layer")
 ensure_directory_exists(save_path)
@@ -32,25 +38,25 @@ plotter = EvaluationPlotter(f"evaluation.parquet")
 
 # Generate the strings
 formatted_ids = [
-    f"{model}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{length}_{sequence}_{threshold}_Iteration-{i+1}_{cluster}"
-    for model, length, sequence, threshold, i, cluster in product(
-        models, lengths, sequences, thresholds_list, range(iterations), clusters
+    f"{model}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{length}_{sequence_mapping[exp_name]}_{threshold}_Iteration-{i+1}_{exp_name}"
+    for model, length, threshold, i, exp_name in product(
+        models, lengths, thresholds_list, range(iterations), experiment_names
     )
 ]
 
 def get_label(group_id: str):
+    """Gera o label usando o nome do experimento e a composição da sequência."""
     parts = group_id.split('_')
-    cluster = parts[-1].capitalize()  
-    context = parts[4].capitalize()   
-    return f"{cluster} - {context} "
-
+    experiment_name = parts[-1].capitalize()  
+    sequence_composition = parts[4].capitalize()   
+    return f"{experiment_name} ({sequence_composition})"
 
 
 for sequence_length in lengths:
     model_ids_for_length = [
         [mid for mid in formatted_ids 
-         if f"SequenceLength-{sequence_length}_" in mid and f"_{cluster}" in mid and f"_{seq}_" in mid]
-        for cluster, seq in product(clusters, sequences)
+         if f"SequenceLength-{sequence_length}_" in mid and f"_{exp_name}" in mid]
+        for exp_name in experiment_names
     ]
 
     # remove grupos vazios

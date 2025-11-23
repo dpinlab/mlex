@@ -15,6 +15,9 @@ from mlex import DataReader
 from mlex import StandardEvaluator
 from mlex import F1MaxThresholdStrategy
 from mlex import LSTM
+from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
+from sklearn.cluster import AgglomerativeClustering
 from mlex import ContextAware
 
 
@@ -29,57 +32,75 @@ num_classes = 1
 epochs = 30
 patience = 5
 target_column = 'eyeDetection'
-# sequences_compositions = ['feature', 'temporal']
-sequence_column_dict = {'temporal': None, 'feature': 'GROUP'}
+sequences_compositions = ['temporal', 'feature']
+sequence_column_dict = {'temporal': None, 'feature': 'O1'}
 iterations = 10
 timestamp_column= 'Timestamp'
-base_path = r'/data/eeg_eyestate/EEG_Eye_State'
-cluster_names = ['kmeans', 'gmm', 'agglomerative']
-GROUP_CATEGORIES = [np.array([0, 1, 2], dtype=int)]
+path = r'/data/eeg_eyestate/EEG_Eye_State.csv'
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-experiment_names = ['temporal'] + cluster_names
 
-for exp_name in experiment_names:
-    if exp_name == 'temporal':
-        train_path = f'{base_path}_temporal_train.csv'
-        test_path = f'{base_path}_temporal_test.csv'
-        sequence_composition = 'temporal'
-    else:
-        cluster_name = exp_name 
-        train_path = f'{base_path}_{cluster_name}_train.csv'
-        test_path = f'{base_path}_{cluster_name}_test.csv'
-        sequence_composition = 'feature'
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-   
-    print(f"\n\n### Rodando experimento: {exp_name} (Composição: {sequence_composition}) ###")    
-    print(f"Lendo TRAIN: {os.path.basename(train_path)} | TEST: {os.path.basename(test_path)}\n")
 
-    reader_train = DataReader(train_path, target_columns=[target_column] )
-    X_train_full, y_train_full = reader_train.get_X_y()
 
-    # X_train_full["cluster"] = X_train_full["GROUP"]
-    
-    reader_test = DataReader(test_path, target_columns=[target_column] )
-    X_test, y_test = reader_test.get_X_y()
+reader = DataReader(path, target_columns=[target_column] )
+X_full,y_full = reader.get_X_y()
 
-    # X_test["cluster"] = X_test["GROUP"]
+
+
+
+for sequence_composition in sequences_compositions:
+    print(f"experiment sequence {sequence_composition}")
 
     sequence_column = sequence_column_dict[sequence_composition]
-    
-    context_sorter = ContextAware(
-        target_column=target_column, 
-        timestamp_column=timestamp_column, 
-        context_column=sequence_column
-    )
 
+    splitter_tt = PastFutureSplit(proportion=0.75, timestamp_column=timestamp_column)
+    splitter_tt.fit(X_full, y_full)
+            
+    X_train_full, y_train_full, X_test, y_test = splitter_tt.transform(X_full, y_full)
+
+    if sequence_column:
+        bins = X_train_full[sequence_column].quantile(np.linspace(0, 1, 5)).unique().tolist()
+            
+        # Ajuste de bordas para garantir inclusão de min e max
+        if len(bins) >= 2:
+            bins[0] = X_train_full[sequence_column].min() - 1e-6
+            bins[-1] = X_train_full[sequence_column].max() + 1e-6
+            bins = sorted(list(set(bins))) # Garante ordem e unicidade
+        else:
+            print("Poucos valores únicos, discretização pulada.")
+            continue # Pula a iteração se a discretização não for possível
+
+        X_train_full['GROUP'] = pd.cut(
+            X_train_full[sequence_column],
+            bins=bins, 
+            labels=False, 
+            include_lowest=True,
+            right=True
+        ).fillna(-1).astype(int)
+        
+        
+        X_test['GROUP'] = pd.cut(
+            X_test[sequence_column],
+            bins=bins,
+            labels=False,
+            include_lowest=True,
+            right=True
+        ).fillna(-1).astype(int)
+
+
+        context_sorter = ContextAware(target_column=target_column, timestamp_column=timestamp_column, context_column='GROUP')
+    else:
+        context_sorter = ContextAware(target_column=target_column, timestamp_column=timestamp_column, context_column=None)
     ####### ordenacao por contexto
 
     X_train_full, y_train_full = context_sorter.transform(X_train_full.copy(), y_train_full.copy())
     X_test, y_test = context_sorter.transform(X_test.copy(), y_test.copy())
     ################
 
+
+    
     for sequence_length in sequence_lengths:
         for i in range(iterations):
                         
@@ -92,12 +113,9 @@ for exp_name in experiment_names:
                             target_column=target_column, 
                             seq_length = sequence_length, 
                             numeric_features= [col for col in X_train.columns if (col != timestamp_column and col != 'GROUP')],
-                            # categorical_features= ['cluster'],
                             context_feature=['GROUP'],
-                            # categories=GROUP_CATEGORIES,
                             random_seed=None,
-                            device=device
-                        )
+                            device=device)
 
             model_LSTM.fit(X_train, y_train)
 
@@ -105,7 +123,7 @@ for exp_name in experiment_names:
 
             y_true = model_LSTM.get_y_true_sequences(X_test, y_test)
 
-            evaluator = StandardEvaluator(f"LSTM_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}_{exp_name}", threshold_selection)
+            evaluator = StandardEvaluator(f"LSTM_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{sequence_length}_{sequence_composition}_{threshold_strategy}_Iteration-{i+1}", threshold_selection)
             evaluator.evaluate(np.array(y_true), [], y_pred_score)
             print(evaluator.summary())
             print('\n')
