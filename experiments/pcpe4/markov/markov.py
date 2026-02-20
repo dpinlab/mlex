@@ -2,7 +2,8 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 import torch
-from mlex import DataReader, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
+from mlex import DataReader
+from pcpe_utils import get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import AgglomerativeClustering

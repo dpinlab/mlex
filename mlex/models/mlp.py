@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import time
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
@@ -7,13 +8,14 @@ from mlex.utils.preprocessing import PreProcessingTransformer
 
 
 class MLP(BaseEstimator, ClassifierMixin):
-    def __init__(self, target_column=None, categories=None, **kwargs):
+    def __init__(self, target_column, categories=None, filter_dict=None, **kwargs):
         """
         Initialize MLP model.
         
         Args:
             target_column: str - name of target column in dataset
             categories: list - categorical column values for preprocessing
+            filter_dict: optional dictionary to filter data on (optional)
             **kwargs: additional model parameters
         """
         super().__init__()
@@ -40,10 +42,9 @@ class MLP(BaseEstimator, ClassifierMixin):
         }
         self.target_column = target_column
         self.categories = categories
+        self.filter_dict = filter_dict
         self.final_model = None
         self.model = None
-
-        self.model = self._build_model()
 
         self.fitted_ = False
         self.last_fit_time = 0
@@ -53,6 +54,11 @@ class MLP(BaseEstimator, ClassifierMixin):
         return 'MLP'
 
     def fit(self, X, y):
+        if self.filter_dict is not None:
+            X, y = self._apply_filter(X, y)
+
+        self._set_categories(X)
+        self.model = self._build_model()
         start = time.perf_counter()
         self.model.fit(X, y)
         end = time.perf_counter()
@@ -62,13 +68,62 @@ class MLP(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
-        return self.model.predict(X)
+        self._validate_fitted()
+        
+        if self.filter_dict is None:
+            return self.model.predict(X)
+
+        X_filtered = self._apply_filter(X)
+
+        if len(X_filtered) == 0:
+            return np.zeros(len(X))
+
+        y_pred_filtered = self.model.predict(X_filtered)
+        
+        y_pred = np.zeros(len(X), dtype=y_pred_filtered.dtype)
+        original_indices_of_filtered = X.index.get_indexer(X_filtered.index)
+        y_pred[original_indices_of_filtered] = y_pred_filtered
+        
+        return y_pred
 
     def predict_proba(self, X):
-        return self.model.predict_proba(X)[:, -1]
+        self._validate_fitted()
+        
+        if self.filter_dict is None:
+            return self.model.predict_proba(X)[:, -1]
 
-    def score_samples(self, X):
-        return self.model.score_samples(X)
+        X_filtered = self._apply_filter(X)
+
+        if len(X_filtered) == 0:
+            return np.zeros(len(X))
+
+        y_pred_filtered = self.model.predict_proba(X_filtered)[:, -1]
+
+        y_pred = np.zeros(len(X))
+        original_indices_of_filtered = X.index.get_indexer(X_filtered.index)
+        y_pred[original_indices_of_filtered] = y_pred_filtered
+        
+        return y_pred
+
+    def _apply_filter(self, X, y=None):
+        if self.filter_dict is None:
+            return X, y
+
+        mask = pd.Series(True, index=X.index)
+        for col, val in self.filter_dict.items():
+            if col in X.columns:
+                if isinstance(val, list):
+                    mask &= X[col].isin(val)
+                else:
+                    mask &= (X[col] == val)
+
+        X_filtered = X[mask].copy()
+
+        if y is not None:
+            y_filtered = y[mask].copy()
+            return X_filtered, y_filtered
+
+        return X_filtered
 
     def _build_model(self):
         model_params = {
@@ -105,13 +160,29 @@ class MLP(BaseEstimator, ClassifierMixin):
 
         return model
 
+    def _set_categories(self, X):
+        categorical_features = self.preprocessor_params.get('categorical_features', None)
+        if self.categories is None and categorical_features is not None:
+            self.categories = [X[col].unique() for col in categorical_features]
+
+    def _validate_fitted(self):
+        if not self.fitted_:
+            raise ValueError("Model is not fitted")
+
     def get_feature_names(self):
         return self.model.named_steps['preprocessor'].get_feature_names_out()
 
     def get_params(self, deep=True):
-        return {**self.model_params, **self.preprocessor_params}.copy()
+        params = {**self.model_params, **self.preprocessor_params}.copy()
+        params['target_column'] = self.target_column
+        params['categories'] = self.categories
+        return params
 
     def set_params(self, **parameters):
+        if 'target_column' in parameters:
+            self.target_column = parameters.pop('target_column')
+        if 'categories' in parameters:
+            self.categories = parameters.pop('categories')
         self.model_params.update({key: parameters[key] for key in list(self.model_params.keys()) if key in parameters})
         self.preprocessor_params.update({key: parameters[key] for key in list(self.preprocessor_params.keys()) if key in parameters})
         return self

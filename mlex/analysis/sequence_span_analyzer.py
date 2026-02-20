@@ -42,7 +42,7 @@ class SequenceSpanCalculator(BaseEstimator, TransformerMixin):
 
         dataset = SequenceDataset(X=X_group, y=None,
                                   sequence_length=self.sequence_length,
-                                  column_to_stratify_index=0)
+                                  group_column_index=0)
 
         self.spans_ = self._vectorized_span_calculation(df_sorted, dataset.valid_indices)
         return self

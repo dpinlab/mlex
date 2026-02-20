@@ -10,7 +10,8 @@ from copy import deepcopy
 from mlex.features.sequences import SequenceTransformer
 from mlex import FeatureStratifiedSplit
 from mlex import PreProcessingTransformer
-from mlex import DataReader, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
+from mlex import DataReader
+from pcpe_utils import get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 from mlex import StandardEvaluator
 from mlex import F1MaxThresholdStrategy
 from mlex.models.models import RNNModel
@@ -48,12 +49,12 @@ for sequence_composition in sequences_compositions:
         for i in range(iterations):
             print(f"iteration {i+1}")
             # Initialize splitter
-            splitter_tt = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.3)
+            splitter_tt = FeatureStratifiedSplit(stratify_column=column_to_stratify, split_proportion=0.3)
             splitter_tt.fit(X, y)
             # Get splits
             X_train, y_train, X_test, y_test = splitter_tt.transform(X, y)
 
-            splitter_tv = FeatureStratifiedSplit(column_to_stratify=column_to_stratify, test_proportion=0.3, number_of_quantiles=2)
+            splitter_tv = FeatureStratifiedSplit(stratify_column=column_to_stratify, split_proportion=0.3, number_of_quantiles=2)
             splitter_tv.fit(X_train, y_train)
             # Get splits
             X_train, y_train, X_val, y_val = splitter_tv.transform(X_train, y_train)

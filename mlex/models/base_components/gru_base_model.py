@@ -51,6 +51,8 @@ class GRUBaseModel(nn.Module):
         self.validation_data = validation_data
         self.group_index = group_index
         self.random_seed = random_seed
+        self.fitted_ = False
+        self.predict_end_indices = []
 
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -65,6 +67,10 @@ class GRUBaseModel(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
         self.to(device=self.device)
+
+        # Activation collection
+        self.collect_activations = kwargs.get('collect_activations', False)
+        self.activations = {'train': [], 'validation': [], 'predict': []}
 
     def __forward(self, x):
         # GRU forward pass
@@ -84,6 +90,15 @@ class GRUBaseModel(nn.Module):
         # output: (batch_size, output_size)
         output = self.sigmoid(linear_out)
 
+        if self.collect_activations:
+            mode = 'train' if not self.fitted_ and self.training else 'validation'
+            mode = 'predict' if self.fitted_ and not self.training else mode
+            self.activations[mode].append({
+                'hidden_states': gru_out.detach().cpu().numpy(), # H(t) for all t
+                'last_hidden': last_output.detach().cpu().numpy(), # H(T)
+                'output': output.detach().cpu().numpy()
+            })
+
         return output
 
     @property
@@ -98,7 +113,6 @@ class GRUBaseModel(nn.Module):
             torch.manual_seed(self.random_seed)
 
         self.__fit_core(X, y)
-        self.fitted_ = True
 
     def predict_proba(self, X):
         self.eval()
@@ -107,10 +121,9 @@ class GRUBaseModel(nn.Module):
         return probs
 
     def predict(self, X):
-        return self.score_samples(X)
-
-    def score_samples(self, X):
+        self.activations['predict'] = []
         test_loader = self._create_dataloader(X, None, shuffle_dataloader=False)
+        self.predict_end_indices = test_loader.dataset.valid_end_indices
         y_pred = []
         for x_batch in test_loader:
             x = x_batch.to(self.device)

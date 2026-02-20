@@ -1,3 +1,6 @@
+import sys
+from os.path import join, abspath
+sys.path.append(abspath(join(__file__ , "..", "..")))
 import matplotlib.pyplot as plt
 from mlex.evaluation.plotter import EvaluationPlotter
 

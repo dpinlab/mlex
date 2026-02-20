@@ -1,4 +1,4 @@
-# from .models import *
+from .bilstm import *
 from .gru import *
 from .lstm import *
 from .rnn import *

@@ -6,17 +6,17 @@ import time
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
 from mlex.evaluation.threshold import F1MaxThresholdStrategy
-from mlex.models.base_components.rnn_base_model import RNNBaseModel
+from mlex.models.base_components.bilstm_base_model import BILSTMBaseModel
 from mlex.utils.preprocessing import PreProcessingTransformer
 from mlex.utils.split import FeatureStratifiedSplit, PastFutureSplit
 from mlex.utils.context_aware import ContextAware
 
 
-class RNN(nn.Module, BaseEstimator, ClassifierMixin):
+class BILSTM(nn.Module, BaseEstimator, ClassifierMixin):
     def __init__(self, target_column, timestamp_column, val_data=None, categories=None, context_column=None,
                  val_split=0.3, split_stratify_column=None, sort_columns=None, filter_dict=None, **kwargs):
         """
-        Initialize RNN model.
+        Initialize BILSTM model.
         
         Args:
             target_column: str - name of target column in dataset
@@ -81,7 +81,7 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
 
     @property
     def name(self):
-        return 'RNN'
+        return 'BILSTM'
 
     def fit(self, X, y, **kwargs):
         self.model_params.update({key: kwargs[key] for key in list(self.model_params.keys()) if key in kwargs})
@@ -304,7 +304,7 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
             categories=self.categories, 
             handle_unknown='ignore'
         )
-        self.final_model = RNNBaseModel(
+        self.final_model = BILSTMBaseModel(
             validation_data=model_params['validation_data'], 
             **{k: v for k, v in model_params.items() if k != 'validation_data'}
         )

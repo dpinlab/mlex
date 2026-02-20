@@ -5,7 +5,7 @@ import numpy as np
 class DataReader():
     def __init__(self, data_path, target_columns, filter_dict=None, dtype_dict=None, preprocessing_func=None):
         self.data_path = data_path
-        self.target_columns = target_columns
+        self.target_columns = target_columns if isinstance(target_columns, list) else [target_columns]
         self.filter_dict = filter_dict
         self.X = None
         self.y = None

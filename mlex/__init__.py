@@ -37,5 +37,4 @@ __all__ = [
     "MarkovAnalyzerPlotter",
     "SequenceSpanAnalyzer",
     "SequenceSpanCalculator",
-    "PCPEDataExploratoryAnalysis",
 ]

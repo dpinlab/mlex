@@ -2,74 +2,175 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
+from typing import Optional, List, Tuple, Union
 
 
 class SequenceDataset(Dataset):
-    def __init__(self, X, y=None, sequence_length=None, column_to_stratify_index=None):
-        '''
-            column_to_stratify : index of column being used to group the sequences
-        '''
-        X = np.asarray(X)
+    """
+    PyTorch Dataset for sequential data with optional grouping.
+    
+    This dataset creates sliding windows of sequences from input data.
+    If a group column is specified, sequences are constrained to stay
+    within the same group (e.g., user sessions, time series per entity).
+    """
 
-        X_features = np.delete(X, column_to_stratify_index, axis=1)
-
-        if X_features.size == 0:
-            X_features_float = np.empty((len(X), 0), dtype=np.float32)
-        else:
-            try:
-                X_features_float = X_features.astype(np.float32)
-            except Exception:
-                # Fallback: keep only columns that can be coerced to float
-                numeric_columns = []
-                for j in range(X_features.shape[1]):
-                    try:
-                        numeric_columns.append(X_features[:, j].astype(np.float32))
-                    except Exception:
-                        continue
-                if numeric_columns:
-                    X_features_float = np.column_stack(numeric_columns).astype(np.float32)
-                else:
-                    X_features_float = np.empty((X_features.shape[0], 0), dtype=np.float32)
-
-        self.X = torch.tensor(X_features_float, dtype=torch.float32)
-        self.y = y
-        if y is not None:
-            self.y = torch.tensor(y, dtype=torch.float32)
+    def __init__(
+        self, 
+        X: np.ndarray, 
+        y: Optional[np.ndarray] = None, 
+        sequence_length: int = None,
+        group_column_index: Optional[int] = None,
+        cache_tensors: bool = False
+    ):
+        """
+        Initialize SequenceDataset.
+        
+        Args:
+            X: Input features array of shape (n_samples, n_features)
+            y: Target values of shape (n_samples,) (optional)
+            sequence_length: Length of each sequence window
+            group_column_index: Column index used to group sequences (e.g., user_id, session_id)
+            cache_tensors: Whether to cache tensor conversions (useful for repeated access)
+        
+        Raises:
+            ValueError: If sequence_length is None or data length < sequence_length
+        """
+        if sequence_length is None:
+            raise ValueError("sequence_length is required")
+        
         self.sequence_length = sequence_length
-        self.column_to_stratify = X[:, column_to_stratify_index]
+        self.group_column_index = group_column_index
+        self.cache_tensors = cache_tensors
+        self._cache = {} if cache_tensors else None
 
-        if self.column_to_stratify is not None:
-            self.valid_indices = self._generate_valid_indices()
+        X = np.asarray(X)
+        self._validate_inputs(X, y)
+
+        self.group_column = X[:, group_column_index] if group_column_index is not None else None
+    
+        self.X = self._extract_features(X, group_column_index)
+        self.y = self._convert_targets(y)
+        
+        self.valid_indices, self.valid_end_indices = self._generate_valid_indices()
+    
+    def _validate_inputs(self, X: np.ndarray, y: Optional[np.ndarray]) -> None:
+        if len(X) < self.sequence_length:
+            raise ValueError(
+                f"Data length ({len(X)}) must be >= sequence_length ({self.sequence_length})"
+            )
+        
+        if y is not None and len(X) != len(y):
+            raise ValueError(
+                f"X and y must have same length. Got X: {len(X)}, y: {len(y)}"
+            )
+    
+    def _extract_features(self, X: np.ndarray, exclude_column: Optional[int]) -> torch.Tensor:
+        if exclude_column is not None:
+            X_features = np.delete(X, exclude_column, axis=1)
         else:
-            self.valid_indices = np.arange(len(X) - self.sequence_length + 1).tolist()
+            X_features = X
+        
+        if X_features.size == 0:
+            return torch.empty((len(X), 0), dtype=torch.float32)
 
-
-    def _generate_valid_indices(self):
-        ''''
-            indices[] : all the initial indexes of sequences that can be used
-        '''
-        indices = []
+        try:
+            return torch.tensor(X_features, dtype=torch.float32)
+        except (ValueError, TypeError):
+            return self._convert_mixed_types(X_features)
+    
+    def _convert_mixed_types(self, X: np.ndarray) -> torch.Tensor:
+        numeric_data = []
+        for col_idx in range(X.shape[1]):
+            try:
+                numeric_data.append(X[:, col_idx].astype(np.float32))
+            except (ValueError, TypeError):
+                continue
+        
+        if not numeric_data:
+            return torch.empty((X.shape[0], 0), dtype=torch.float32)
+        
+        return torch.tensor(np.column_stack(numeric_data), dtype=torch.float32)
+    
+    def _convert_targets(self, y: Optional[np.ndarray]) -> Optional[torch.Tensor]:
+        return torch.tensor(y, dtype=torch.float32) if y is not None else None
+    
+    def _generate_valid_indices(self) -> List[int]:
+        if self.group_column is None:
+            return self._generate_ungrouped_indices()
+        return self._generate_grouped_indices()
+    
+    def _generate_ungrouped_indices(self) -> List[int]:
+        max_start_idx = len(self.X) - self.sequence_length
+        min_end_idx = self.sequence_length - 1
+        return list(range(max_start_idx + 1)), list(range(min_end_idx, len(self.X)))
+    
+    def _generate_grouped_indices(self) -> List[int]:
+        valid_indices = []
+        valid_end_indices = []
         i = 0
-        while i < (len(self.X) - self.sequence_length + 1):
-            window = self.column_to_stratify[i:i + self.sequence_length]
-            if np.all(window == window[0]):
-                indices.append(i)
+        max_idx = len(self.X) - self.sequence_length + 1
+        
+        while i < max_idx:
+            end_idx = i + self.sequence_length
+            window_groups = self.group_column[i:end_idx]
+
+            if self._is_homogeneous_group(window_groups):
+                valid_indices.append(i)
+                valid_end_indices.append(end_idx - 1)
                 i += 1
             else:
-                i += np.min(np.where(np.array(window) != window[0]))
-        return indices
-
-    def __len__(self):
-        return len(self.valid_indices)
-
-    def __getitem__(self, idx):
-        i = self.valid_indices[idx]
-        X_seq = self.X[i:i + self.sequence_length]
+                i += self._find_next_group_boundary(window_groups)
+        
+        return valid_indices, valid_end_indices
+    
+    def _is_homogeneous_group(self, window: np.ndarray) -> bool:
+        return np.all(window == window[0])
+    
+    def _find_next_group_boundary(self, window: np.ndarray) -> int:
+        first_value = window[0]
+        change_positions = np.where(window != first_value)[0]
+        return int(change_positions[0]) if len(change_positions) > 0 else 1
+    
+    def _get_sequence(self, idx: int) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        start_idx = self.valid_indices[idx]
+        end_idx = start_idx + self.sequence_length
+        
+        X_seq = self.X[start_idx:end_idx]
+        
         if self.y is not None:
-            y_seq = self.y[i + self.sequence_length - 1] # seq to vec
-            return X_seq, y_seq
-
+            y_value = self.y[end_idx - 1]  # Target at sequence end
+            return X_seq, y_value
+        
         return X_seq
+    
+    def __len__(self) -> int:
+        return len(self.valid_indices)
+    
+    def __getitem__(self, idx: int) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """
+        Get sequence at index.
+        
+        Args:
+            idx: Index in the dataset (0 to len(dataset)-1)
+        
+        Returns:
+            If y exists: (X_sequence, y_value) where y_value is the target at sequence end
+            Otherwise: X_sequence only
+        """
+        if self.cache_tensors and idx in self._cache:
+            return self._cache[idx]
+        
+        result = self._get_sequence(idx)
+        
+        if self.cache_tensors:
+            self._cache[idx] = result
+        
+        return result
+    
+    def clear_cache(self) -> None:
+        """Clear cached tensors to free memory."""
+        if self._cache is not None:
+            self._cache.clear()
 
 
 class SequenceTransformer(BaseEstimator, TransformerMixin):

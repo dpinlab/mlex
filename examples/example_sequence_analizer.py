@@ -7,11 +7,12 @@ from mlex import ensure_directory_exists
 from mlex import SequenceSpanAnalyzer
 from mlex import create_summary_table
 from mlex import SequenceAnalyzerPlotter
-from mlex import DataReader, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
+from mlex import DataReader
+from pcpe_utils import get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 
 
 def main():
-    data_path = r'/data/pcpe/pcpe_03.csv'
+    data_path = r'/data/pcpe/pcpe_04.csv'
     sequence_lengths = [i for i in range(10, 51, 10)]
     sequences_compositions = ['Baseline', 'Individual', 'Account']
     sequence_column_dict = {
@@ -22,7 +23,7 @@ def main():
     target_column = 'I-d'
     filter_data = {'NATUREZA_LANCAMENTO': 'C'}
 
-    output_dir = join(abspath(join(__file__, "..")), "03_sequence_days_analysis")
+    output_dir = join(abspath(join(__file__, "..")), "04_sequence_days_analysis")
     ensure_directory_exists(output_dir)
 
     reader = DataReader(data_path, target_columns=[target_column], filter_dict=filter_data, dtype_dict=get_pcpe_dtype_dict(), preprocessing_func=pcpe_preprocessing_read_func)
@@ -71,7 +72,7 @@ def main():
     summary_path = join(output_dir, "sequence_days_summary.csv")
     summary_df.to_csv(summary_path, index=False)
 
-    plot_path = join(output_dir, "sequence_days_plots.png")
+    plot_path = join(output_dir, "sequence_days_plots.pdf")
     plotter = SequenceAnalyzerPlotter(
         results,
         language='en-us',

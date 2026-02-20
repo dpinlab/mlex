@@ -1,20 +1,44 @@
 import json
 import os
 from datetime import datetime
+from abc import ABC, abstractmethod
 
 import pyarrow as pa
 import pandas as pd
+import numpy as np
 import pyarrow.parquet as pq
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc, precision_recall_curve
 
-from .base import BaseEvaluator
 from .utils import CustomEncoder
 
 
+class BaseEvaluator(ABC):
+    @abstractmethod
+    def evaluate(self, y_true, y_pred, scores):
+        pass
+
+    @abstractmethod
+    def save(self, path):
+        pass
+
+    @abstractmethod
+    def load(self, path):
+        pass
+
+    @abstractmethod
+    def summary(self):
+        pass
+
+    @staticmethod
+    def _is_binary(y):
+        return len(np.unique(y)) == 2
+
+
 class StandardEvaluator(BaseEvaluator):
-    def __init__(self, model_id, threshold_strategy=None):
+    def __init__(self, model_id, threshold_strategy=None, threshold=None):
         self.model_id = model_id
         self.threshold_strategy = threshold_strategy
+        self._threshold = threshold
         self.results = None
         self._schema = pa.schema([
             pa.field('timestamp', pa.timestamp('ns')),
@@ -40,11 +64,11 @@ class StandardEvaluator(BaseEvaluator):
         binary = self._is_binary(y_true)
         threshold = None
 
-        if binary and self.threshold_strategy:
-            threshold = self.threshold_strategy.compute_threshold(y_true, scores)
-            # if scores.ndim == 2 and scores.shape[1] == 2:
-            #     scores = scores[:, 1]
-            y_pred = (scores >= threshold).astype(int)
+        if binary:
+            if self.threshold_strategy is not None and self._threshold is None:
+                self._threshold = self.threshold_strategy.compute_threshold(y_true, scores)
+
+            y_pred = (scores >= self._threshold).astype(int)
 
         metrics = {
             'accuracy': accuracy_score(y_true, y_pred),

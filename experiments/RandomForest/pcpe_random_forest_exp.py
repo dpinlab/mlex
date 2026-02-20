@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.tree import plot_tree
-from mlex import DataReader, RandomForest, F1MaxThresholdStrategy, StandardEvaluator, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
+from mlex import DataReader, RandomForest, F1MaxThresholdStrategy, StandardEvaluator
+from pcpe_utils import get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 
 path_train = r'/data/pcpe/pcpe_03.csv'
 path_test = r'/data/pcpe/pcpe_04.csv'

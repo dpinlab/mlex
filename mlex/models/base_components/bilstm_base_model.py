@@ -7,7 +7,7 @@ from mlex.features.sequences import SequenceDataset
 from copy import deepcopy
 
 
-class RNNBaseModel(nn.Module):
+class BILSTMBaseModel(nn.Module):
     def __init__(
         self,
         validation_data,
@@ -56,14 +56,15 @@ class RNNBaseModel(nn.Module):
 
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.rnn = nn.RNN(
+        self.bilstm = nn.LSTM(
             input_size=input_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
+            bidirectional=True,
         )
 
-        self.linear = nn.Linear(hidden_size, self.output_size)
+        self.linear = nn.Linear(hidden_size * 2, self.output_size)
         self.sigmoid = nn.Sigmoid()
 
         self.to(device=self.device)
@@ -73,14 +74,14 @@ class RNNBaseModel(nn.Module):
         self.activations = {'train': [], 'validation': [], 'predict': []}
 
     def __forward(self, x):
-        # RNN forward pass
-        # rnn_out: (batch_size, seq_length, hidden_size)
+        # BILSTM forward pass
+        # bilstm_out: (batch_size, seq_length, hidden_size)
         # hidden: (num_layers, batch_size, hidden_size)
-        rnn_out, hidden = self.rnn(x)
+        bilstm_out, hidden = self.bilstm(x)
 
         # Take the output from the last time step
-        # rnn_out[:, -1, :] has shape (batch_size, hidden_size)
-        last_output = rnn_out[:, -1, :]
+        # bilstm_out[:, -1, :] has shape (batch_size, hidden_size)
+        last_output = bilstm_out[:, -1, :]
 
         # Pass through linear layer
         # linear_out: (batch_size, output_size)
@@ -94,7 +95,7 @@ class RNNBaseModel(nn.Module):
             mode = 'train' if not self.fitted_ and self.training else 'validation'
             mode = 'predict' if self.fitted_ and not self.training else mode
             self.activations[mode].append({
-                'hidden_states': rnn_out.detach().cpu().numpy(), # H(t) for all t
+                'hidden_states': bilstm_out.detach().cpu().numpy(), # H(t) for all t
                 'last_hidden': last_output.detach().cpu().numpy(), # H(T)
                 'output': output.detach().cpu().numpy()
             })
@@ -103,7 +104,7 @@ class RNNBaseModel(nn.Module):
 
     @property
     def name(self):
-        return "RNNBaseModel"
+        return "BILSTMBaseModel"
 
     def fit(self, X, y):
         if self.random_seed is not None:

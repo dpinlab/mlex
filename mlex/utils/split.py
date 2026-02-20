@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 
 
 class BaseSplitStrategy(BaseEstimator, TransformerMixin, ABC):
-    def __init__(self, timestamp_column):
+    def __init__(self, timestamp_column=None):
         super().__init__()
         self.timestamp_column = timestamp_column
 
@@ -20,7 +20,7 @@ class BaseSplitStrategy(BaseEstimator, TransformerMixin, ABC):
 class PastFutureSplit(BaseSplitStrategy):
     def __init__(self, timestamp_column=None, proportion=0.5):
         super().__init__(timestamp_column)
-        self.proportion = proportion
+        self.proportion = 1 - proportion
         self.train_indices_ = None
         self.test_indices_ = None
 
@@ -29,28 +29,26 @@ class PastFutureSplit(BaseSplitStrategy):
             X = X.sort_values(by=[self.timestamp_column]).reset_index(drop=True)
         mid = int(self.proportion * len(X))
         self.train_indices_ = X.index[:mid]
-        self.test_indices_ = X.index[mid:-1]
+        self.test_indices_ = X.index[mid:]
 
-        # train_df = df_sorted.loc[self.train_indices_]
-        # test_df = df_sorted.loc[self.test_indices_]
-        # # Ensure common CNAB values between splits
-        # common_cnab = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
-        # self.train_indices_ = train_df[train_df['CNAB'].isin(common_cnab)].index
-        # self.test_indices_ = test_df[test_df['CNAB'].isin(common_cnab)].index
         return self
 
     def transform(self, X, y):
-        return X.loc[self.train_indices_].reset_index(drop=True), y.loc[self.train_indices_].reset_index(drop=True), X.loc[self.test_indices_].reset_index(drop=True), y.loc[self.test_indices_].reset_index(drop=True)
+        X_train = X.loc[self.train_indices_].reset_index(drop=True)
+        y_train = y.loc[self.train_indices_].reset_index(drop=True)
+        X_test = X.loc[self.test_indices_].reset_index(drop=True)
+        y_test = y.loc[self.test_indices_].reset_index(drop=True)
+        return X_train, y_train, X_test, y_test
 
     def get_test_indices(self):
         return self.test_indices_
 
 
 class FeatureStratifiedSplit(BaseSplitStrategy):
-    def __init__(self, timestamp_column='DATA_LANCAMENTO', column_to_stratify='CONTA_TITULAR', test_proportion=0.3, number_of_quantiles=4):
-        super().__init__(timestamp_column)
-        self.column_to_stratify = column_to_stratify
-        self.test_proportion = test_proportion
+    def __init__(self, stratify_column=None, split_proportion=0.3, number_of_quantiles=4):
+        super().__init__()
+        self.stratify_column = stratify_column
+        self.split_proportion = split_proportion
         self.number_of_quantiles = number_of_quantiles
         self.train_indices_ = None
         self.test_indices_ = None
@@ -59,59 +57,60 @@ class FeatureStratifiedSplit(BaseSplitStrategy):
         if y is None:
             raise ValueError("y must be provided for stratification")
 
+        if self.stratify_column is None:
+            raise ValueError("stratify_column must be provided")
+
         dataset_size = len(X)
-        id_counts = X[y.values == 1].groupby(self.column_to_stratify).size()
-        total_counts = X.groupby(self.column_to_stratify).size()
+        positive_counts = X[y.values == 1].groupby(self.stratify_column).size()
+        total_counts = X.groupby(self.stratify_column).size()
 
-        id_ratio = (id_counts / total_counts).fillna(0)
+        positive_ratio = (positive_counts / total_counts).fillna(0)
 
-        accounts_df = pd.DataFrame(total_counts).rename(columns={0: "total_transactions"})
-        accounts_df["id_ratio"] = id_ratio
-        accounts_df["id_ratio"] = accounts_df["id_ratio"].fillna(0)
-        accounts_df = accounts_df.reset_index()  # self.column_to_stratify becomes a column
+        groups_df = pd.DataFrame(total_counts).rename(columns={0: "total_samples"})
+        groups_df["positive_ratio"] = positive_ratio
+        groups_df["positive_ratio"] = groups_df["positive_ratio"].fillna(0)
+        groups_df = groups_df.reset_index()
 
-        accounts_df["weighted_score"] = accounts_df["id_ratio"] * (accounts_df["total_transactions"] / dataset_size)
+        groups_df["weighted_score"] = groups_df["positive_ratio"] * (groups_df["total_samples"] / dataset_size)
 
-        min_score = accounts_df["weighted_score"].min()
-        max_score = accounts_df["weighted_score"].max()
+        min_score = groups_df["weighted_score"].min()
+        max_score = groups_df["weighted_score"].max()
 
         if min_score == max_score:
-            accounts_df["cluster"] = 0
+            groups_df["cluster"] = 0
         else:
-            accounts_df["cluster"] = pd.qcut(
-                accounts_df["weighted_score"],
+            groups_df["cluster"] = pd.qcut(
+                groups_df["weighted_score"],
                 q=self.number_of_quantiles,
                 labels=False,
                 duplicates='drop'
             )
 
-        accounts_ratio_pos = accounts_df[accounts_df['id_ratio'] > 0]
-        accounts_ratio_zero = accounts_df[accounts_df['id_ratio'] == 0]
-        
-        train_with_pos, test_with_pos = train_test_split(
-            accounts_ratio_pos[self.column_to_stratify], 
-            test_size=self.test_proportion, 
-            stratify=accounts_ratio_pos["cluster"]
+        groups_with_positive = groups_df[groups_df['positive_ratio'] > 0]
+        groups_without_positive = groups_df[groups_df['positive_ratio'] == 0]
+
+        train_with_positive, test_with_positive = train_test_split(
+            groups_with_positive[self.stratify_column], 
+            test_size=self.split_proportion, 
+            stratify=groups_with_positive["cluster"]
         )
 
-        train_only_zero, test_only_zero = train_test_split(
-            accounts_ratio_zero[self.column_to_stratify],
-            test_size=0.5
-        )
+        train_without_positive, test_without_positive = [], []
 
-        train_accounts = list(train_with_pos) + list(train_only_zero)
-        test_accounts = list(test_with_pos) + list(test_only_zero)
+        if groups_without_positive.shape[0] > 1:
+            train_without_positive, test_without_positive = train_test_split(
+                groups_without_positive[self.stratify_column],
+                test_size=0.5
+            )
+        elif groups_without_positive.shape[0] == 1:
+            train_without_positive = groups_without_positive[self.stratify_column]
 
-        self.train_indices_ = X[X[self.column_to_stratify].isin(train_accounts)].index
-        self.test_indices_ = X[X[self.column_to_stratify].isin(test_accounts)].index
+        train_groups = list(train_with_positive) + list(train_without_positive)
+        test_groups = list(test_with_positive) + list(test_without_positive)
 
-        train_df = X.loc[self.train_indices_]
-        test_df = X.loc[self.test_indices_]
+        self.train_indices_ = X[X[self.stratify_column].isin(train_groups)].index
+        self.test_indices_ = X[X[self.stratify_column].isin(test_groups)].index
 
-        # Ensure common CNAB values between splits
-        #common_cnab = set(train_df['CNAB']).intersection(set(test_df['CNAB']))
-        #self.train_indices_ = train_df[train_df['CNAB'].isin(common_cnab)].index
-        #self.test_indices_ = test_df[test_df['CNAB'].isin(common_cnab)].index
         return self
 
     def transform(self, X, y):
@@ -121,4 +120,4 @@ class FeatureStratifiedSplit(BaseSplitStrategy):
         return self.test_indices_
 
     def get_groups(self, X):
-        return X.loc[self.train_indices_, self.column_to_stratify].values, X.loc[self.test_indices_, self.column_to_stratify].values
+        return X.loc[self.train_indices_, self.stratify_column].values, X.loc[self.test_indices_, self.stratify_column].values

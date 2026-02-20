@@ -27,24 +27,17 @@ X_test = reader_test.fit_transform(X=None)
 y_test = reader_test.get_target()
 
 
-X_train['GROUP'] = 'Unknown'
-X_test['GROUP'] = 'Unknown'
-
-
 y_train[target_column] = y_train[target_column].astype(int)
 y_test[target_column] = y_test[target_column].astype(int)
 
 
-
 categories = [pd.unique(X_train[col]) for col in ['TIPO', 'CNAB', 'NATUREZA_SALDO']]
-
 
 n_estimators = [50, 100, 200]
 max_depth = [None, 5, 10]
 min_samples_split = [2, 5]
 min_samples_leaf = [1, 2]
 combinations = list(itertools.product(n_estimators, max_depth, min_samples_split, min_samples_leaf))
-
 
 results_list = []
 

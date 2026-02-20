@@ -5,7 +5,8 @@ sys.path.append(abspath(join(__file__ , "..", "..", "..")))
 import torch
 import numpy as np
 import pandas as pd
-from mlex import DataReader, MLP, F1MaxThresholdStrategy, StandardEvaluator, get_pcpe_dtype_dict, pcpe_preprocessing_read_func
+from mlex import DataReader, MLP, F1MaxThresholdStrategy, StandardEvaluator
+from pcpe_utils import get_pcpe_dtype_dict, pcpe_preprocessing_read_func
 
 path_train = r'/data/pcpe/pcpe_03.csv'
 path_test = r'/data/pcpe/pcpe_04.csv'
