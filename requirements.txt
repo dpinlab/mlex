@@ -11,3 +11,4 @@ pyarrow
 skorch
 scipy
 seaborn
+parameterized

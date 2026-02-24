@@ -1,5 +1,6 @@
 import pandas as pd
-
+import functools
+import numpy as np
 
 class DataReader():
     def __init__(self, data_path, target_columns, filter_dict=None, dtype_dict=None, preprocessing_func=None):
@@ -83,6 +84,26 @@ def get_pcpe_dtype_dict():
             'ANO_LANCAMENTO': 'uint16'
         }
 
+def sorter_decorator(fn):
+    @functools.wraps(fn)
+    def wrapper(df, *args, **kwargs):
+        df = fn(df, *args, **kwargs)
+        balance_sign = np.where(df['NATUREZA_SALDO'] == 'D', -1, 1)
+        tx_sign = np.where(df['NATUREZA_LANCAMENTO'] == 'D', -1, 1)
+        
+        df["VALOR_SALDO"] = (df["VALOR_SALDO"] * 100).round() / 100.0
+        df["VALOR_TRANSACAO"] = (df["VALOR_TRANSACAO"] * 100).round() / 100.0
+        
+        df["VALOR_SALDO"] *= balance_sign
+        df["VALOR_TRANSACAO"] *= tx_sign
+        
+        
+        df["SALDO_ANTERIOR"] = (
+            (df["VALOR_SALDO"] * 100).round() - (df["VALOR_TRANSACAO"] * 100).round()
+        ) / 100.0
+        df['TIMESTEP'] = pd.factorize(df['DATA_LANCAMENTO'].sort_values())[0]
+        return df
+    return wrapper
 
 def pcpe_preprocessing_read_func(df):
     df['CONTA_TITULAR'] = (

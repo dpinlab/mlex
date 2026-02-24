@@ -11,7 +11,7 @@ class TestThresholdStrategies(unittest.TestCase):
         self.y_true = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
 
     def test_quantile_strategy(self):
-        strategy = QuantileThresholdStrategy(quantile=95)
+        strategy = QuantileThresholdStrategy(quantile=.95)
         threshold = strategy.compute_threshold(self.y_true, self.scores)
         self.assertAlmostEqual(threshold, 0.95, places=2)
 
