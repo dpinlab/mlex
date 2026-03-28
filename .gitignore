@@ -171,12 +171,18 @@ cython_debug/
 *.png
 *.tex
 *.out
-
-test/test_composite.py
-test/test_rnn_model.py
+*.zip
+*.graphml
+*.gml
+*.pdf
+*.csv
+*.gephi
+*.cys
+*.svg
+*.out
 
 results/
 *venv*
 
 data/
-experiments/pcpe4/
+experiments/pcpe4/visualization/outputs/*
