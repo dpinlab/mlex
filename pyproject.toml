@@ -51,8 +51,8 @@ all = [
 
 
 [project.urls]
-Homepage = "https://github.com/IoTDataAtelier/mlex"
-"Bug Tracker" = "https://github.com/IoTDataAtelier/mlex/issues"
+Homepage = "https://github.com/dpinlab/mlex"
+"Bug Tracker" = "https://github.com/dpinlab/mlex/issues"
 
 
 [tool.setuptools.packages.find]

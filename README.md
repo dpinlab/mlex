@@ -22,5 +22,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/IoTDataAtelier/mlex/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/IoTDataAtelier/mlex/discussions)
+- **Issues**: [GitHub Issues](https://github.com/dpinlab/mlex/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/dpinlab/mlex/discussions)
