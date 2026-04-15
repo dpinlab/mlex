@@ -21,16 +21,32 @@ classifiers = [
 
 
 dependencies = [
-    "ipykernel~=6.29.5",
-    "matplotlib~=3.10.0",
-    "numpy~=1.26.4",
-    "pandas~=2.2.3",
-    "pyarrow~=19.0.1",
-    "scikit-learn~=1.6.1",
-    "scipy~=1.11.4",
+    "matplotlib~=3.10.8",
+    "networkx~=3.4.2",
+    "numpy~=2.2.6",
+    "pandas~=2.3.3",
+    "pyarrow~=18.1.0",
+    "pydantic~=2.13.0",
+    "scikit-learn~=1.7.2",
+    "scipy~=1.15.3",
     "seaborn~=0.13.2",
-    "torch~=2.7.0",
-    "tqdm~=4.67.1",
+    "tqdm~=4.67.3",
+]
+
+[project.optional-dependencies]
+torch = [
+    "torch~=2.10.0",
+]
+notebook = [
+    "ipykernel~=7.2.0",
+]
+dev = [
+    "mlex-lib[torch,notebook]",
+    "parameterized~=0.9.0",
+    "shap~=0.49.1",
+]
+all = [
+    "mlex-lib[dev]",
 ]
 
 
