@@ -3,7 +3,8 @@ import torch
 import numpy as np
 import random
 from torch.utils.data import DataLoader
-from mlex.features.sequences import SequenceDataset
+from mlex.features.sequences import SequenceDataset, DynamicSequenceDataset, DynamicLengthBatchSampler
+from mlex.features.length_strategy import LengthStrategy
 from copy import deepcopy
 
 
@@ -27,6 +28,8 @@ class RNNBaseModel(nn.Module):
         group_index=-1,
         random_seed=42,
         device=None,
+        dynamic_length_strategy=None,
+        dynamic_drop_last=True,
         **kwargs
     ):
         super().__init__()
@@ -53,6 +56,9 @@ class RNNBaseModel(nn.Module):
         self.random_seed = random_seed
         self.fitted_ = False
         self.predict_end_indices = []
+
+        self.dynamic_length_strategy = dynamic_length_strategy
+        self.dynamic_drop_last = dynamic_drop_last
 
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -132,7 +138,7 @@ class RNNBaseModel(nn.Module):
         return y_pred
 
     def __fit_core(self, X, y):
-        train_loader = self._create_dataloader(X, y, self.shuffle_dataloader)
+        train_loader = self._create_train_dataloader(X, y)
         val_loader = self._create_dataloader(self.validation_data[0], self.validation_data[1], self.shuffle_dataloader)
 
         return self.__train_epochs(train_loader, val_loader)
@@ -216,3 +222,27 @@ class RNNBaseModel(nn.Module):
         if y is not None:
             y = y.values if hasattr(y, 'values') else y
         return DataLoader(self.__create_dataset(X, y), batch_size=self.batch_size, shuffle=shuffle_dataloader)
+
+    def _create_train_dataloader(self, X, y):
+        if self.dynamic_length_strategy is None:
+            return self._create_dataloader(X, y, self.shuffle_dataloader)
+
+        if y is not None:
+            y = y.values if hasattr(y, 'values') else y
+
+        strategy: LengthStrategy = self.dynamic_length_strategy
+        dataset = DynamicSequenceDataset(
+            X=X,
+            y=y,
+            sequence_lengths=strategy.lengths,
+            group_column_index=self.group_index,
+        )
+        batch_sampler = DynamicLengthBatchSampler(
+            dataset=dataset,
+            batch_size=self.batch_size,
+            strategy=strategy,
+            shuffle=self.shuffle_dataloader,
+            drop_last=self.dynamic_drop_last,
+            random_seed=self.random_seed,
+        )
+        return DataLoader(dataset, batch_sampler=batch_sampler)

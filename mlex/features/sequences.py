@@ -1,8 +1,10 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Sampler
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union, Iterator
+
+from mlex.features.length_strategy import LengthStrategy, UniformRandomLengthStrategy
 
 
 class SequenceDataset(Dataset):
@@ -187,6 +189,138 @@ class SequenceTransformer(BaseEstimator, TransformerMixin):
         dataset = SequenceDataset(X, y, self.sequence_length, self.column_to_stratify_index)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffled)
         return dataloader
+
+
+class DynamicSequenceDataset(Dataset):
+    """Sliding-window dataset that supports multiple sequence lengths.
+
+    Internally builds one `SequenceDataset` per configured length and routes
+    `__getitem__((length, position))` to the matching child dataset. Pair with
+    `DynamicLengthBatchSampler` so each batch is composed from a single length.
+    """
+
+    def __init__(
+        self,
+        X: np.ndarray,
+        y: Optional[np.ndarray] = None,
+        sequence_lengths: Optional[List[int]] = None,
+        group_column_index: Optional[int] = None,
+        cache_tensors: bool = False,
+    ):
+        if not sequence_lengths:
+            raise ValueError("sequence_lengths must be a non-empty list")
+
+        self.sequence_lengths: List[int] = sorted({int(length) for length in sequence_lengths})
+        self.group_column_index = group_column_index
+        self.cache_tensors = cache_tensors
+
+        self._datasets = {
+            length: SequenceDataset(
+                X=X,
+                y=y,
+                sequence_length=length,
+                group_column_index=group_column_index,
+                cache_tensors=cache_tensors,
+            )
+            for length in self.sequence_lengths
+        }
+
+    @property
+    def datasets(self) -> dict:
+        return self._datasets
+
+    def valid_indices_for(self, length: int) -> List[int]:
+        return self._datasets[int(length)].valid_indices
+
+    def valid_end_indices_for(self, length: int) -> List[int]:
+        return self._datasets[int(length)].valid_end_indices
+
+    def __len__(self) -> int:
+        return sum(len(ds) for ds in self._datasets.values())
+
+    def __getitem__(self, index: Tuple[int, int]) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        length, position = index
+        return self._datasets[int(length)][int(position)]
+
+
+class DynamicLengthBatchSampler(Sampler):
+    """Yield batches where every item shares a length; length varies per batch.
+
+    On each batch, picks a length via `strategy.next_length(rng)` and emits
+    `batch_size` `(length, position)` tuples drawn (without replacement within
+    an epoch) from that length's pool of valid start positions.
+    """
+
+    def __init__(
+        self,
+        dataset: DynamicSequenceDataset,
+        batch_size: int,
+        strategy: Optional[LengthStrategy] = None,
+        shuffle: bool = True,
+        drop_last: bool = True,
+        random_seed: Optional[int] = None,
+    ):
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+
+        self.dataset = dataset
+        self.batch_size = int(batch_size)
+        self.shuffle = shuffle
+        self.drop_last = drop_last
+        self.random_seed = random_seed
+        self.strategy = strategy or UniformRandomLengthStrategy(dataset.sequence_lengths)
+
+        for length in self.strategy.lengths:
+            if length not in dataset.datasets:
+                raise ValueError(
+                    f"Strategy length {length} is not available in dataset "
+                    f"(available: {dataset.sequence_lengths})"
+                )
+
+    def __iter__(self) -> Iterator[List[Tuple[int, int]]]:
+        rng = np.random.default_rng(self.random_seed)
+
+        queues = {}
+        for length in self.strategy.lengths:
+            positions = list(range(len(self.dataset.datasets[length])))
+            if self.shuffle:
+                rng.shuffle(positions)
+            queues[length] = positions
+
+        cursors = {length: 0 for length in queues}
+        active_lengths = [length for length, q in queues.items() if len(q) > 0]
+
+        while active_lengths:
+            length = int(self.strategy.next_length(rng))
+            if length not in queues or cursors[length] >= len(queues[length]):
+                # Strategy picked a length that is exhausted; drop it and retry.
+                if length in active_lengths:
+                    active_lengths.remove(length)
+                continue
+
+            start = cursors[length]
+            end = start + self.batch_size
+            slice_positions = queues[length][start:end]
+            cursors[length] = end
+
+            if len(slice_positions) < self.batch_size:
+                if not self.drop_last and len(slice_positions) > 0:
+                    yield [(length, pos) for pos in slice_positions]
+                if length in active_lengths:
+                    active_lengths.remove(length)
+                continue
+
+            yield [(length, pos) for pos in slice_positions]
+
+    def __len__(self) -> int:
+        total = 0
+        for length in self.strategy.lengths:
+            n = len(self.dataset.datasets[length])
+            if self.drop_last:
+                total += n // self.batch_size
+            else:
+                total += (n + self.batch_size - 1) // self.batch_size
+        return total
 
 
 # class SequenceTransformer2(BaseEstimator, TransformerMixin):

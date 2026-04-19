@@ -31,6 +31,10 @@ __all__ = [
     # Features
     "SequenceDataset",
     "SequenceTransformer",
+    "DynamicSequenceDataset",
+    "DynamicLengthBatchSampler",
+    "LengthStrategy",
+    "UniformRandomLengthStrategy",
 
     # Analysis
     "MarkovAnalyzer",

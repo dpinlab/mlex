@@ -52,6 +52,8 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
             'feature_names': kwargs.get('feature_names', None),
             'device': kwargs.get('device', torch.device("cuda" if torch.cuda.is_available() else "cpu")),
             'collect_activations': kwargs.get('collect_activations', False),
+            'dynamic_length_strategy': kwargs.get('dynamic_length_strategy', None),
+            'dynamic_drop_last': kwargs.get('dynamic_drop_last', True),
         }
         self.preprocessor_params = {
             'numeric_features': kwargs.get('numeric_features', None) or None,
@@ -288,6 +290,8 @@ class RNN(nn.Module, BaseEstimator, ClassifierMixin):
             'device': self.model_params.get('device', None),
             'validation_data': self.model_params.get('validation_data', None),
             'collect_activations': self.model_params.get('collect_activations', False),
+            'dynamic_length_strategy': self.model_params.get('dynamic_length_strategy', None),
+            'dynamic_drop_last': self.model_params.get('dynamic_drop_last', True) if self.model_params.get('dynamic_drop_last') is not None else True,
         }
         preprocessor_params = {
             'numeric_features': self.preprocessor_params.get('numeric_features', None) or None,
