@@ -9,12 +9,17 @@ from .evaluation import *
 from .features import *
 from .models import *
 from .utils import *
+from .observers import *
 
 __all__ = [
     # Models
     "GRU",
-    "LSTM", 
+    "LSTM",
     "RNN",
+
+    # Observers
+    "EpochObserver",
+    "AUCROCObserver",
     
     # Evaluation
     "StandardEvaluator",

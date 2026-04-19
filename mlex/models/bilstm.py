@@ -10,6 +10,7 @@ from mlex.models.base_components.bilstm_base_model import BILSTMBaseModel
 from mlex.utils.preprocessing import PreProcessingTransformer
 from mlex.utils.split import FeatureStratifiedSplit, PastFutureSplit
 from mlex.utils.context_aware import ContextAware
+from mlex.observers.observers import AUCROCObserver
 
 
 class BILSTM(nn.Module, BaseEstimator, ClassifierMixin):
@@ -54,6 +55,7 @@ class BILSTM(nn.Module, BaseEstimator, ClassifierMixin):
             'collect_activations': kwargs.get('collect_activations', False),
             'dynamic_length_strategy': kwargs.get('dynamic_length_strategy', None),
             'dynamic_drop_last': kwargs.get('dynamic_drop_last', True),
+            'epoch_observers': kwargs.get('epoch_observers', None),
         }
         self.preprocessor_params = {
             'numeric_features': kwargs.get('numeric_features', None) or None,
@@ -86,6 +88,7 @@ class BILSTM(nn.Module, BaseEstimator, ClassifierMixin):
         return 'BILSTM'
 
     def fit(self, X, y, **kwargs):
+        test_data = kwargs.get('test_data', None)
         self.model_params.update({key: kwargs[key] for key in list(self.model_params.keys()) if key in kwargs})
         self.preprocessor_params.update({key: kwargs[key] for key in list(self.preprocessor_params.keys()) if key in kwargs})
 
@@ -113,6 +116,12 @@ class BILSTM(nn.Module, BaseEstimator, ClassifierMixin):
 
             X_val_transformed, y_val_transformed = preprocessor.transform(self.val_data[0], self.val_data[1])
             self.model_params['validation_data'] = (X_val_transformed, y_val_transformed)
+
+            if test_data is not None:
+                X_test_transformed, y_test_transformed = preprocessor.transform(test_data[0], test_data[1])
+                observers = list(self.model_params.get('epoch_observers') or [])
+                observers.append(AUCROCObserver(name='test', data=(X_test_transformed, y_test_transformed)))
+                self.model_params['epoch_observers'] = observers
 
             self.model = self._build_model()
 
@@ -292,6 +301,7 @@ class BILSTM(nn.Module, BaseEstimator, ClassifierMixin):
             'collect_activations': self.model_params.get('collect_activations', False),
             'dynamic_length_strategy': self.model_params.get('dynamic_length_strategy', None),
             'dynamic_drop_last': self.model_params.get('dynamic_drop_last', True) if self.model_params.get('dynamic_drop_last') is not None else True,
+            'epoch_observers': self.model_params.get('epoch_observers') or [],
         }
         preprocessor_params = {
             'numeric_features': self.preprocessor_params.get('numeric_features', None) or None,

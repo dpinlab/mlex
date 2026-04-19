@@ -30,6 +30,7 @@ class RNNBaseModel(nn.Module):
         device=None,
         dynamic_length_strategy=None,
         dynamic_drop_last=True,
+        epoch_observers=None,
         **kwargs
     ):
         super().__init__()
@@ -77,6 +78,9 @@ class RNNBaseModel(nn.Module):
         # Activation collection
         self.collect_activations = kwargs.get('collect_activations', False)
         self.activations = {'train': [], 'validation': [], 'predict': []}
+
+        self.epoch_observers = list(epoch_observers) if epoch_observers else []
+        self.history = {'train': [], 'val': [], 'epoch': []}
 
     def __forward(self, x):
         # RNN forward pass
@@ -177,6 +181,8 @@ class RNNBaseModel(nn.Module):
             # Validation phase
             val_loss = 0
             total_samples_val = 0
+            val_outputs_all = []
+            val_targets_all = []
             self.eval()
             with torch.no_grad():
                 for batch_x, batch_y in val_loader:
@@ -186,6 +192,8 @@ class RNNBaseModel(nn.Module):
                     outputs = self.__forward(batch_x)
                     val_loss += criterion(outputs, batch_y).item() * current_batch_size
                     total_samples_val += current_batch_size
+                    val_outputs_all.append(outputs.detach().cpu().numpy().flatten())
+                    val_targets_all.append(batch_y.detach().cpu().numpy().flatten())
 
             # Record history
             avg_train_loss = train_loss / total_samples
@@ -197,6 +205,20 @@ class RNNBaseModel(nn.Module):
             print(f"Epoch {epoch + 1}/{self.epochs} - "
                 f"Train Loss: {avg_train_loss:.4f} - "
                 f"Val Loss: {avg_val_loss:.4f}")
+
+            if self.epoch_observers:
+                val_outputs_arr = np.concatenate(val_outputs_all) if val_outputs_all else np.array([])
+                val_targets_arr = np.concatenate(val_targets_all) if val_targets_all else np.array([])
+                observer_context = {
+                    'epoch': epoch + 1,
+                    'model': self,
+                    'train_loss': avg_train_loss,
+                    'val_loss': avg_val_loss,
+                    'val_outputs': val_outputs_arr,
+                    'val_targets': val_targets_arr,
+                }
+                for observer in self.epoch_observers:
+                    observer.on_epoch_end(observer_context)
 
             # Early stopping
             if avg_val_loss < best_val_loss:
@@ -211,6 +233,7 @@ class RNNBaseModel(nn.Module):
 
         # Load best weights
         self.load_state_dict(best_weights)
+        self.history = history
         return best_weights, history
 
 
