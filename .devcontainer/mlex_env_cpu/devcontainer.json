@@ -1,0 +1,48 @@
+{
+  "name": "mlex_env_cpu",
+  "build": {
+    "context": "../..",
+    "dockerfile": "../../Dockerfile",
+    "args": {
+      "REQUIREMENTS_FILE": "requirements-cpu.txt"
+    }
+  },
+  "workspaceFolder": "/workspace",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.black-formatter",
+        "ms-python.vscode-python-envs",
+        "ms-python.debugpy",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "eamodio.gitlens",
+        "ms-toolsai.datawrangler",
+        "esbenp.prettier-vscode",
+        "ms-toolsai.jupyter"
+      ],
+      "settings": {
+        "python.analysis.extraPaths": ["/workspace"],
+        "python.testing.unittestArgs": ["-v", "-s", "./tests", "-t", ".", "-p", "test_*.py"],
+        "python.testing.pytestEnabled": false,
+        "python.testing.unittestEnabled": true,
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.autoFormatStrings": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnPaste": true,
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter"
+        }
+      }
+    }
+  },
+  "remoteEnv": {
+    "PYTHONPATH": "/workspace"
+  },
+  "mounts": [
+    "source=dev-container-mlex-cpu-history,target=/root/.bash_history,type=volume",
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ],
+  "remoteUser": "root"
+}
