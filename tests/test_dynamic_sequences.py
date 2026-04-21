@@ -193,7 +193,7 @@ class DynamicBatchingEndToEndTests(unittest.TestCase):
 
     def test_lstm_base_model_trains_with_dynamic_lengths(self):
         import torch
-        from mlex.models.base_components.lstm_base_model import LSTMBaseModel
+        from mlex.models.base_components.recurrent import LSTMBaseModel
 
         X_train, y_train = _make_data(n_samples=120, n_features=3, seed=11)
         X_val, y_val = _make_data(n_samples=60, n_features=3, seed=12)

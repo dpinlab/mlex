@@ -12,7 +12,7 @@ def _make_data(n_samples=120, n_features=3, seed=0):
 
 def _make_base_model(epoch_observers, epochs=3, patience=10, seed=42):
     import torch
-    from mlex.models.base_components.lstm_base_model import LSTMBaseModel
+    from mlex.models.base_components.recurrent import LSTMBaseModel
 
     X_val, y_val = _make_data(n_samples=60, seed=12)
     return LSTMBaseModel(

@@ -13,6 +13,7 @@ from .observers import *
 
 __all__ = [
     # Models
+    "BILSTM",
     "GRU",
     "LSTM",
     "RNN",

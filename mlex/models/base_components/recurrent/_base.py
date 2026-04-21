@@ -1,120 +1,83 @@
-import torch.nn as nn
-import torch
-import numpy as np
 import random
-from torch.utils.data import DataLoader
-from mlex.features.sequences import SequenceDataset, DynamicSequenceDataset, DynamicLengthBatchSampler
-from mlex.features.length_strategy import LengthStrategy
 from copy import deepcopy
 
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 
-class BILSTMBaseModel(nn.Module):
-    def __init__(
-        self,
-        validation_data,
-        input_size=None,
-        hidden_size=10,
-        num_layers=1,
-        output_size=1,
-        seq_length=30,
-        batch_size=32,
-        shuffle_dataloader=True,
-        learning_rate=1e-03,
-        alpha=.9,
-        eps=1e-07,
-        weight_decay=.0,
-        epochs=30,
-        patience=5,
-        group_index=-1,
-        random_seed=42,
-        device=None,
-        dynamic_length_strategy=None,
-        dynamic_drop_last=True,
-        epoch_observers=None,
-        **kwargs
-    ):
+from mlex.features.length_strategy import LengthStrategy
+from mlex.features.sequences import (
+    DynamicLengthBatchSampler,
+    DynamicSequenceDataset,
+    SequenceDataset,
+)
+from mlex.models.base_components.recurrent.params import RecurrentModelParams
+
+
+class _RecurrentBaseModel(nn.Module):
+    LAYER_CLS: type = None
+    BIDIRECTIONAL: bool = False
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if cls.LAYER_CLS is None:
+            raise TypeError(f"{cls.__name__} must define LAYER_CLS")
+
+    def __init__(self, validation_data=None, **kwargs):
         super().__init__()
-        # Model architecture parameters
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.output_size = output_size
+        params = RecurrentModelParams(validation_data=validation_data, **kwargs)
+        self.params = params
 
-        # Data parameters
-        self.seq_length = seq_length
-        self.batch_size = batch_size
-        self.shuffle_dataloader = shuffle_dataloader
+        for field_name in RecurrentModelParams.model_fields:
+            setattr(self, field_name, getattr(params, field_name))
 
-        # Training parameters
-        self.learning_rate = learning_rate
-        self.alpha = alpha
-        self.eps = eps
-        self.weight_decay = weight_decay
-        self.epochs = epochs
-        self.patience = patience
-        self.validation_data = validation_data
-        self.group_index = group_index
-        self.random_seed = random_seed
-        self.fitted_ = False
-        self.predict_end_indices = []
-
-        self.dynamic_length_strategy = dynamic_length_strategy
-        self.dynamic_drop_last = dynamic_drop_last
-
-        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        self.bilstm = nn.LSTM(
-            input_size=input_size,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            bidirectional=True,
+        self.device = params.device or torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
         )
 
-        self.linear = nn.Linear(hidden_size * 2, self.output_size)
+        layer_kwargs = dict(
+            input_size=self.input_size,
+            hidden_size=self.hidden_size,
+            num_layers=self.num_layers,
+            batch_first=True,
+        )
+        if self.BIDIRECTIONAL:
+            layer_kwargs['bidirectional'] = True
+
+        self.recurrent_layer = self.LAYER_CLS(**layer_kwargs)
+        linear_in = self.hidden_size * (2 if self.BIDIRECTIONAL else 1)
+        self.linear = nn.Linear(linear_in, self.output_size)
         self.sigmoid = nn.Sigmoid()
 
         self.to(device=self.device)
 
-        # Activation collection
-        self.collect_activations = kwargs.get('collect_activations', False)
+        self.fitted_ = False
+        self.predict_end_indices = []
         self.activations = {'train': [], 'validation': [], 'predict': []}
-
-        self.epoch_observers = list(epoch_observers) if epoch_observers else []
+        self.epoch_observers = list(params.epoch_observers) if params.epoch_observers else []
         self.history = {'train': [], 'val': [], 'epoch': []}
 
     def __forward(self, x):
-        # BILSTM forward pass
-        # bilstm_out: (batch_size, seq_length, hidden_size)
-        # hidden: (num_layers, batch_size, hidden_size)
-        bilstm_out, hidden = self.bilstm(x)
-
-        # Take the output from the last time step
-        # bilstm_out[:, -1, :] has shape (batch_size, hidden_size)
-        last_output = bilstm_out[:, -1, :]
-
-        # Pass through linear layer
-        # linear_out: (batch_size, output_size)
+        layer_out, _hidden = self.recurrent_layer(x)
+        last_output = layer_out[:, -1, :]
         linear_out = self.linear(last_output)
-
-        # Apply sigmoid activation
-        # output: (batch_size, output_size)
         output = self.sigmoid(linear_out)
 
         if self.collect_activations:
             mode = 'train' if not self.fitted_ and self.training else 'validation'
             mode = 'predict' if self.fitted_ and not self.training else mode
             self.activations[mode].append({
-                'hidden_states': bilstm_out.detach().cpu().numpy(), # H(t) for all t
-                'last_hidden': last_output.detach().cpu().numpy(), # H(T)
-                'output': output.detach().cpu().numpy()
+                'hidden_states': layer_out.detach().cpu().numpy(),
+                'last_hidden': last_output.detach().cpu().numpy(),
+                'output': output.detach().cpu().numpy(),
             })
 
         return output
 
     @property
     def name(self):
-        return "BILSTMBaseModel"
+        return type(self).__name__
 
     def fit(self, X, y):
         if self.random_seed is not None:
@@ -144,25 +107,26 @@ class BILSTMBaseModel(nn.Module):
 
     def __fit_core(self, X, y):
         train_loader = self._create_train_dataloader(X, y)
-        val_loader = self._create_dataloader(self.validation_data[0], self.validation_data[1], self.shuffle_dataloader)
-
+        val_loader = self._create_dataloader(
+            self.validation_data[0], self.validation_data[1], self.shuffle_dataloader
+        )
         return self.__train_epochs(train_loader, val_loader)
 
     def __train_epochs(self, train_loader, val_loader):
         optimizer = torch.optim.RMSprop(
-            self.parameters(), 
+            self.parameters(),
             lr=self.learning_rate,
             alpha=self.alpha,
             eps=self.eps,
-            weight_decay=self.weight_decay
+            weight_decay=self.weight_decay,
         )
         criterion = nn.BCELoss()
         best_val_loss = float('inf')
         patience_counter = 0
+        best_weights = None
         history = {'train': [], 'val': [], 'epoch': []}
 
         for epoch in range(self.epochs):
-            # Training phase
             self.train()
             train_loss = 0
             total_samples = 0
@@ -179,7 +143,6 @@ class BILSTMBaseModel(nn.Module):
                 train_loss += loss.item() * current_batch_size
                 total_samples += current_batch_size
 
-            # Validation phase
             val_loss = 0
             total_samples_val = 0
             val_outputs_all = []
@@ -196,16 +159,15 @@ class BILSTMBaseModel(nn.Module):
                     val_outputs_all.append(outputs.detach().cpu().numpy().flatten())
                     val_targets_all.append(batch_y.detach().cpu().numpy().flatten())
 
-            # Record history
             avg_train_loss = train_loss / total_samples
             avg_val_loss = val_loss / total_samples_val
             history['train'].append(avg_train_loss)
             history['val'].append(avg_val_loss)
-            history['epoch'].append(epoch+1)
+            history['epoch'].append(epoch + 1)
 
             print(f"Epoch {epoch + 1}/{self.epochs} - "
-                f"Train Loss: {avg_train_loss:.4f} - "
-                f"Val Loss: {avg_val_loss:.4f}")
+                  f"Train Loss: {avg_train_loss:.4f} - "
+                  f"Val Loss: {avg_val_loss:.4f}")
 
             if self.epoch_observers:
                 val_outputs_arr = np.concatenate(val_outputs_all) if val_outputs_all else np.array([])
@@ -221,7 +183,6 @@ class BILSTMBaseModel(nn.Module):
                 for observer in self.epoch_observers:
                     observer.on_epoch_end(observer_context)
 
-            # Early stopping
             if avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss
                 patience_counter = 0
@@ -232,20 +193,22 @@ class BILSTMBaseModel(nn.Module):
                     print(f"Early stopping at epoch {epoch+1}\n\n")
                     break
 
-        # Load best weights
-        self.load_state_dict(best_weights)
+        if best_weights is not None:
+            self.load_state_dict(best_weights)
         self.history = history
         return best_weights, history
-
 
     def __create_dataset(self, X, y):
         return SequenceDataset(X, y, self.seq_length, self.group_index)
 
-
     def _create_dataloader(self, X, y, shuffle_dataloader):
         if y is not None:
             y = y.values if hasattr(y, 'values') else y
-        return DataLoader(self.__create_dataset(X, y), batch_size=self.batch_size, shuffle=shuffle_dataloader)
+        return DataLoader(
+            self.__create_dataset(X, y),
+            batch_size=self.batch_size,
+            shuffle=shuffle_dataloader,
+        )
 
     def _create_train_dataloader(self, X, y):
         if self.dynamic_length_strategy is None:
