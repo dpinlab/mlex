@@ -17,23 +17,20 @@ __all__ = [
     "GRU",
     "LSTM",
     "RNN",
-
     # Observers
     "EpochObserver",
     "AUCROCObserver",
-    
     # Evaluation
     "StandardEvaluator",
     "F1MaxThresholdStrategy",
     "QuantileThresholdStrategy",
     "EvaluationPlotter",
-    
     # Utils
     "DataReader",
     "FeatureStratifiedSplit",
     "PreProcessingTransformer",
     "NoiseInjector",
-    
+    "TransactionFlow",
     # Features
     "SequenceDataset",
     "SequenceTransformer",
@@ -41,10 +38,10 @@ __all__ = [
     "DynamicLengthBatchSampler",
     "LengthStrategy",
     "UniformRandomLengthStrategy",
-
     # Analysis
     "MarkovAnalyzer",
     "MarkovAnalyzerPlotter",
     "SequenceSpanAnalyzer",
     "SequenceSpanCalculator",
+    "TransactionMultiDigraph",
 ]

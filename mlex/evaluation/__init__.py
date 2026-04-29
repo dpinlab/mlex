@@ -1,11 +1,13 @@
 from .evaluator import StandardEvaluator
 from .threshold import QuantileThresholdStrategy, F1MaxThresholdStrategy
 from .utils import compare_evaluations, CustomEncoder
+from .plotter import EvaluationPlotter
 
 __all__ = [
-    'StandardEvaluator',
-    'QuantileThresholdStrategy',
-    'F1MaxThresholdStrategy',
-    'compare_evaluations',
-    'CustomEncoder'
+    "StandardEvaluator",
+    "QuantileThresholdStrategy",
+    "F1MaxThresholdStrategy",
+    "compare_evaluations",
+    "CustomEncoder",
+    "EvaluationPlotter",
 ]

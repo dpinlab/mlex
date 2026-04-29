@@ -16,7 +16,7 @@ from mlex.utils.network_strategy import (
 from mlex.utils.schema import Transaction
 from mlex.utils.sorter import AccountBalanceSorter
 
-from .data.sort_fixtures import TransactionSortFixture
+from ..data.sort_fixtures import TransactionSortFixture
 
 
 def compose_integrity_scenario():

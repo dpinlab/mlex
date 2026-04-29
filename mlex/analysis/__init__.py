@@ -2,13 +2,14 @@ from .sequence_span_analyzer import SequenceSpanAnalyzer, SequenceSpanCalculator
 from .sequence_analyzer_plotter import SequenceAnalyzerPlotter
 from .markov_analyzer import MarkovAnalyzer
 from .markov_analyzer_plotter import MarkovAnalyzerPlotter
-
+from .network import TransactionMultiDigraph
 
 __all__ = [
-    'SequenceSpanAnalyzer',
-    'SequenceSpanCalculator',
-    'create_summary_table',
-    'SequenceAnalyzerPlotter',
-    'MarkovAnalyzer',
-    'MarkovAnalyzerPlotter',
+    "SequenceSpanAnalyzer",
+    "SequenceSpanCalculator",
+    "create_summary_table",
+    "SequenceAnalyzerPlotter",
+    "MarkovAnalyzer",
+    "MarkovAnalyzerPlotter",
+    "TransactionMultiDigraph",
 ]

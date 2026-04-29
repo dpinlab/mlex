@@ -20,7 +20,8 @@
         "eamodio.gitlens",
         "ms-toolsai.datawrangler",
         "esbenp.prettier-vscode",
-        "ms-toolsai.jupyter"
+        "ms-toolsai.jupyter",
+        "hediet.debug-visualizer"
       ],
       "settings": {
         "python.analysis.extraPaths": ["/workspace"],

@@ -2,7 +2,7 @@ import unittest
 
 import networkx as nx
 import numpy as np
-from .data.sort_fixtures import NetworkStrategyFixture
+from ..data.sort_fixtures import NetworkStrategyFixture
 
 from mlex.utils.network_strategy import EulerianPathStrategy, HamiltonianPathStrategy
 from tests.test_base import BaseTestNetworkStrategy
