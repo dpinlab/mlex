@@ -58,20 +58,33 @@ class _RecurrentBaseModel(nn.Module):
         self.epoch_observers = list(params.epoch_observers) if params.epoch_observers else []
         self.history = {'train': [], 'val': [], 'epoch': []}
 
-    def __forward(self, x):
+    def _activation_mode(self):
+        mode = 'train' if not self.fitted_ and self.training else 'validation'
+        mode = 'predict' if self.fitted_ and not self.training else mode
+        return mode
+
+    def _forward_logits(self, x):
         layer_out, _hidden = self.recurrent_layer(x)
         last_output = layer_out[:, -1, :]
         linear_out = self.linear(last_output)
+
+        if self.collect_activations:
+            self.activations[self._activation_mode()].append({
+                'hidden_states': layer_out.detach().cpu().numpy(),
+                'last_hidden': last_output.detach().cpu().numpy(),
+                'linear_out': linear_out.detach().cpu().numpy(),
+            })
+
+        return linear_out
+
+    def __forward(self, x):
+        linear_out = self._forward_logits(x)
         output = self.sigmoid(linear_out)
 
         if self.collect_activations:
-            mode = 'train' if not self.fitted_ and self.training else 'validation'
-            mode = 'predict' if self.fitted_ and not self.training else mode
-            self.activations[mode].append({
-                'hidden_states': layer_out.detach().cpu().numpy(),
-                'last_hidden': last_output.detach().cpu().numpy(),
-                'output': output.detach().cpu().numpy(),
-            })
+            self.activations[self._activation_mode()][-1]['output'] = (
+                output.detach().cpu().numpy()
+            )
 
         return output
 
@@ -96,6 +109,11 @@ class _RecurrentBaseModel(nn.Module):
 
     def predict(self, X):
         self.activations['predict'] = []
+        if self.dynamic_length_strategy is None:
+            return self._predict_fixed(X)
+        return self._predict_ensemble(X)
+
+    def _predict_fixed(self, X):
         test_loader = self._create_dataloader(X, None, shuffle_dataloader=False)
         self.predict_end_indices = test_loader.dataset.valid_end_indices
         y_pred = []
@@ -105,10 +123,47 @@ class _RecurrentBaseModel(nn.Module):
             y_pred.extend(outputs.flatten())
         return y_pred
 
+    def _predict_ensemble(self, X):
+        lengths = sorted({int(L) for L in self.dynamic_length_strategy.lengths})
+        per_length = {}
+
+        self.eval()
+        for L in lengths:
+            loader = self._create_dataloader(X, None, shuffle_dataloader=False, seq_length=L)
+            end_indices = list(loader.dataset.valid_end_indices)
+            per_idx = {}
+            cursor = 0
+            with torch.no_grad():
+                for x_batch in loader:
+                    x = x_batch.to(self.device)
+                    logits = self._forward_logits(x).cpu()
+                    for j in range(logits.shape[0]):
+                        per_idx[end_indices[cursor + j]] = logits[j]
+                    cursor += logits.shape[0]
+            per_length[L] = per_idx
+
+        covered = sorted(set.union(*(set(d) for d in per_length.values())))
+        self.predict_end_indices = covered
+        y_pred = []
+        with torch.no_grad():
+            for end_idx in covered:
+                contributing = [
+                    per_length[L][end_idx]
+                    for L in lengths
+                    if end_idx in per_length[L]
+                ]
+                avg_logit = torch.stack(contributing).mean(dim=0)
+                prob = self.sigmoid(avg_logit).numpy()
+                y_pred.extend(prob.flatten())
+        return y_pred
+
     def __fit_core(self, X, y):
-        train_loader = self._create_train_dataloader(X, y)
-        val_loader = self._create_dataloader(
-            self.validation_data[0], self.validation_data[1], self.shuffle_dataloader
+        train_loader = self._create_fit_dataloader(
+            X, y, shuffle=self.shuffle_dataloader, drop_last=self.dynamic_drop_last
+        )
+        val_loader = self._create_fit_dataloader(
+            self.validation_data[0], self.validation_data[1],
+            shuffle=False, drop_last=False,
         )
         return self.__train_epochs(train_loader, val_loader)
 
@@ -198,21 +253,32 @@ class _RecurrentBaseModel(nn.Module):
         self.history = history
         return best_weights, history
 
-    def __create_dataset(self, X, y):
-        return SequenceDataset(X, y, self.seq_length, self.group_index)
+    def __create_dataset(self, X, y, seq_length=None):
+        L = seq_length if seq_length is not None else self.seq_length
+        return SequenceDataset(X, y, L, self.group_index)
 
-    def _create_dataloader(self, X, y, shuffle_dataloader):
+    def _loader_kwargs(self):
+        kwargs = {
+            "num_workers": self.num_workers,
+            "pin_memory": self.pin_memory,
+        }
+        if self.num_workers > 0 and self.persistent_workers:
+            kwargs["persistent_workers"] = True
+        return kwargs
+
+    def _create_dataloader(self, X, y, shuffle_dataloader, seq_length=None):
         if y is not None:
             y = y.values if hasattr(y, 'values') else y
         return DataLoader(
-            self.__create_dataset(X, y),
+            self.__create_dataset(X, y, seq_length),
             batch_size=self.batch_size,
             shuffle=shuffle_dataloader,
+            **self._loader_kwargs(),
         )
 
-    def _create_train_dataloader(self, X, y):
+    def _create_fit_dataloader(self, X, y, shuffle, drop_last):
         if self.dynamic_length_strategy is None:
-            return self._create_dataloader(X, y, self.shuffle_dataloader)
+            return self._create_dataloader(X, y, shuffle)
 
         if y is not None:
             y = y.values if hasattr(y, 'values') else y
@@ -228,8 +294,8 @@ class _RecurrentBaseModel(nn.Module):
             dataset=dataset,
             batch_size=self.batch_size,
             strategy=strategy,
-            shuffle=self.shuffle_dataloader,
-            drop_last=self.dynamic_drop_last,
+            shuffle=shuffle,
+            drop_last=drop_last,
             random_seed=self.random_seed,
         )
-        return DataLoader(dataset, batch_sampler=batch_sampler)
+        return DataLoader(dataset, batch_sampler=batch_sampler, **self._loader_kwargs())

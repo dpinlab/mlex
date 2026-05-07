@@ -201,7 +201,8 @@ class DynamicBatchingEndToEndTests(unittest.TestCase):
         y_train = y_train.reshape(-1, 1)
         y_val = y_val.reshape(-1, 1)
 
-        strategy = UniformRandomLengthStrategy([5, 10])
+        lengths = [5, 10]
+        strategy = UniformRandomLengthStrategy(lengths)
 
         model = LSTMBaseModel(
             validation_data=(X_val, y_val),
@@ -224,10 +225,43 @@ class DynamicBatchingEndToEndTests(unittest.TestCase):
         model.fit(X_train, y_train)
 
         preds = model.predict(X_val)
-        # Prediction path still uses the fixed seq_length=5, so output length
-        # equals len(valid_end_indices) for seq_length=5.
-        expected_predictions = len(X_val) - 5 + 1
+        # Ensemble path (union with partial averaging): predictions cover every
+        # end-index that any length produces — i.e. starting at end_idx =
+        # min(lengths) - 1. Indices where only some lengths produced a window
+        # are averaged over those lengths only.
+        expected_predictions = len(X_val) - min(lengths) + 1
         self.assertEqual(len(preds), expected_predictions)
+        self.assertEqual(len(model.predict_end_indices), expected_predictions)
+        self.assertEqual(model.predict_end_indices[0], min(lengths) - 1)
+
+        preds_arr = np.asarray(preds, dtype=float)
+        self.assertTrue(np.all(preds_arr >= 0.0))
+        self.assertTrue(np.all(preds_arr <= 1.0))
+
+        model.eval()
+
+        def _logit_at(end_idx, L):
+            window = torch.from_numpy(
+                X_val[end_idx - L + 1 : end_idx + 1]
+            ).unsqueeze(0)
+            with torch.no_grad():
+                return model._forward_logits(window).cpu().numpy().flatten()[0]
+
+        # At end_idx = min(lengths) - 1, only the shortest length contributes.
+        end_idx_short = min(lengths) - 1
+        expected_short = 1.0 / (1.0 + np.exp(-_logit_at(end_idx_short, min(lengths))))
+        idx_short = model.predict_end_indices.index(end_idx_short)
+        self.assertAlmostEqual(float(preds_arr[idx_short]),
+                               float(expected_short), places=5)
+
+        # At end_idx = max(lengths) - 1, every length contributes — the
+        # prediction equals sigmoid(mean(per-length linear_out)).
+        end_idx_full = max(lengths) - 1
+        logits_full = [_logit_at(end_idx_full, L) for L in lengths]
+        expected_full = 1.0 / (1.0 + np.exp(-np.mean(logits_full)))
+        idx_full = model.predict_end_indices.index(end_idx_full)
+        self.assertAlmostEqual(float(preds_arr[idx_full]),
+                               float(expected_full), places=5)
 
 
 if __name__ == "__main__":

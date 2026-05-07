@@ -14,6 +14,9 @@ class RecurrentModelParams(BaseModel):
     seq_length: int = Field(default=30, gt=0)
     batch_size: int = Field(default=32, gt=0)
     shuffle_dataloader: bool = True
+    num_workers: int = Field(default=0, ge=0)
+    pin_memory: bool = False
+    persistent_workers: bool = False
 
     learning_rate: float = Field(default=1e-3, gt=0)
     alpha: float = 0.9
