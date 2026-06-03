@@ -44,4 +44,5 @@ __all__ = [
     "SequenceSpanAnalyzer",
     "SequenceSpanCalculator",
     "TransactionMultiDigraph",
+    "Trail"
 ]

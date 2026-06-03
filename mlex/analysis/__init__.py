@@ -2,7 +2,7 @@ from .sequence_span_analyzer import SequenceSpanAnalyzer, SequenceSpanCalculator
 from .sequence_analyzer_plotter import SequenceAnalyzerPlotter
 from .markov_analyzer import MarkovAnalyzer
 from .markov_analyzer_plotter import MarkovAnalyzerPlotter
-from .network import TransactionMultiDigraph
+from .network import TransactionMultiDigraph, Trail
 
 __all__ = [
     "SequenceSpanAnalyzer",
@@ -12,4 +12,5 @@ __all__ = [
     "MarkovAnalyzer",
     "MarkovAnalyzerPlotter",
     "TransactionMultiDigraph",
+    "Trail"
 ]
