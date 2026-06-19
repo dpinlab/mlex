@@ -79,7 +79,6 @@ for seq_len in sequence_lengths:
         num_layers=num_layers,
         batch_size=32,  
         epochs=30,
-        num_classes=1,
         patience=5,
 
     
