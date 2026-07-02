@@ -3,7 +3,7 @@ import functools
 import numpy as np
 
 class DataReader():
-    def __init__(self, data_path, target_columns, filter_dict=None, dtype_dict=None, preprocessing_func=None):
+    def __init__(self, data_path, target_columns, filter_dict=None, dtype_dict=None, preprocessing_func=None, sep=";", quotechar=None):
         self.data_path = data_path
         self.target_columns = target_columns if isinstance(target_columns, list) else [target_columns]
         self.filter_dict = filter_dict
@@ -12,11 +12,14 @@ class DataReader():
 
         self.dtype_dict = dtype_dict
         self.preprocessing_func = preprocessing_func
-
+        self.sep = sep
+        self.quotechar = quotechar
+        
     def read_df(self):
         df = pd.read_csv(
             self.data_path,
-            sep=';',
+            sep=self.sep,
+            quotechar=self.quotechar,
             decimal=',',
             dtype=self.dtype_dict,
             low_memory=False

@@ -9,6 +9,10 @@ Divisão dos dados
 
   path_test (pcpe_04.csv)
       └── 100 % → Avaliação final de todos os pipelines completos
+
+      
+      
+    OBS : MUDOU PRA 20% DE VALIDAÇÃO PARA OS PUROS 
 """
 
 import sys
@@ -26,7 +30,7 @@ path_test  = r'/data/pcpe/pcpe_04.csv'
 target_column      = 'I-d'
 filter_data        = {'NATUREZA_LANCAMENTO': 'C'}
 # sequence_column    = 'CONTA_TITULAR'          
-# column_to_stratify = 'CPF_CNPJ_TITULAR'
+column_to_stratify = 'CPF_CNPJ_TITULAR'
 num_layers=1
 hidden_size=10
 iterations=10
@@ -56,10 +60,10 @@ X_test, y_test = reader_test.get_X_y()
 # Resultado: Treino-A=60 %, Validação=10 %, Treino-B(SVM)=30 %
 
 all_experiments = {
-    'pure-rnn':  {'creator': RNN, 'params': {'val_split': 0.1}},
-    'pure-lstm': {'creator': LSTM, 'params': {'val_split': 0.1}},
-    'pure-gru':  {'creator': GRU, 'params': {'val_split': 0.1}},
-    'hybrid':    {'creator': hybrid_rnn_svm, 'params': {'rnn_train_ratio': 0.7, 'rnn_val_ratio': 0.1, 'svm_kernel': 'rbf', 'svm_C': 1.0, 'svm_gamma': 'scale'}}
+    'pure-rnn':  {'creator': RNN, 'params': {'val_split': 0.2}},
+    'pure-lstm': {'creator': LSTM, 'params': {'val_split': 0.2}},
+    'pure-gru':  {'creator': GRU, 'params': {'val_split': 0.2}},
+    'hybrid':    {'creator': hybrid_rnn_svm, 'params': {'rnn_train_ratio': 0.7, 'rnn_val_ratio': 0.2, 'svm_kernel': 'rbf', 'svm_C': 1.0, 'svm_gamma': 'scale'}}
 }
 
 sequence_lengths = [10, 20, 30, 40, 50]
@@ -78,6 +82,7 @@ for model_key, config in all_experiments.items():
                 'timestamp_column': 'DATA_LANCAMENTO',
                 'numeric_features': ['DIA_LANCAMENTO', 'MES_LANCAMENTO', 'VALOR_TRANSACAO', 'VALOR_SALDO'],
                 'categorical_features': ['TIPO', 'NATUREZA_SALDO'],
+                'split_stratify_column': column_to_stratify,
                 'filter_dict': filter_data,
                 'device': device,
                 'seq_length': seq_len,

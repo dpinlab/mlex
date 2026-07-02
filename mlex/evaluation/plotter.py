@@ -159,6 +159,7 @@ class EvaluationPlotter:
         for idx,group in enumerate(model_groups):
             fpr_list, tpr_list, auc_list = [], [], []
             for model_id in group:
+                # row = self.df[self.df['model_id'] == model_id].squeeze()
                 row = self.df[self.df['model_id'] == model_id].squeeze()
                 if len(row.get('fpr', [])) > 0:
                     fpr_list.append(row['fpr'])
@@ -174,14 +175,17 @@ class EvaluationPlotter:
             ci_upper = np.percentile(interpolated_tprs, 97.5, axis=0)
             mean_auc = np.mean(auc_list)
             std_auc = np.std(auc_list)
-            context = group[0].split('_')[4].capitalize()
+            # context = group[0].split('_')[4].capitalize()
 
             label_text = labels[idx] if labels else f"Curve {idx+1}"
 
             color = colors[idx] if colors and idx < len(colors) else None
 
+            # ax.plot(common_fpr, mean_tpr, linewidth=4,color=color,
+            #         label=f"{label_text} Context (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
+            
             ax.plot(common_fpr, mean_tpr, linewidth=4,color=color,
-                    label=f"{label_text} Context (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
+                     label=f"{label_text} (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
             
             if shade:
                 ax.fill_between(common_fpr, ci_lower, ci_upper, alpha=0.3, color=color)
