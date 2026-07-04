@@ -1,46 +1,43 @@
-"""
-Pipeline para o modelo híbrido e baselines puras (RNN, LSTM, GRU) no UCI Ozone Level Detection
-
-Divisão dos dados (Padronizado com o experimento AI4I 2020)
-----------------------------------------------------------
-  path_original -> Separado cronologicamente (PastFutureSplit: Teste = 20%)
-  
-  Fatia de Treino (80% do total):
-      [Para Puros]   ├── 90 % → Treino da Rede | 10 % → Validação (Early Stopping)
-      [Para Híbrido] ├── 70 % → Treino-A (Rede) | 10 % → Validação | 20 % → Treino-B (SVM)
-
-  Fatia de Teste (20% do total):
-      └── 100 % → Avaliação final de todos os pipelines (os 20% de dias mais recentes)
-"""
-
 import sys
+from itertools import product
 from os.path import join, abspath, dirname
 sys.path.append(abspath(join(__file__ , "..", "..", "..", "..")))
 
-from itertools import product
 import numpy as np
 import pandas as pd
 import torch
-from ucimlrepo import fetch_ucirepo
 
-from mlex import RNN, LSTM, GRU, hybrid_rnn_svm, DataReader, StandardEvaluator
-from mlex.utils.split import PastFutureSplit
+from mlex import DataReader,RNN, LSTM, GRU, hybrid_rnn_svm, StandardEvaluator
+
+"""
+Pipeline Completo e Unificado (Modelos Puros + Híbrido) para o UR3 CobotOps
+
+Divisão dos dados (Mantendo equivalência de dados entre os experimentos)
+----------------------------------------------------------------------
+  path_train (cobotops_train_80.csv) -> 80 % do Dataset Original
+      [Para Puros]   ├── 90 % → Treino da Rede | 10 % → Validação (Early Stopping)
+      [Para Híbrido] ├── 70 % → Treino-A (Rede) | 10 % → Validação | 20 % → Treino-B (SVM)
+
+  path_test (cobotops_test_20.csv)   -> 20 % do Dataset Original
+      └── 100 % → Avaliação final de todos os pipelines        (20 % do total)
+"""
 
 RESULTS_DIR = dirname(__file__)
-RESULTS_PARQUET = join(RESULTS_DIR, "ozone-all_experiments_results.parquet")
-RESULTS_JSON = join(RESULTS_DIR, "ozone-all_experiments_results.json")
+RESULTS_PARQUET = join(RESULTS_DIR, "cobot-all_experiments_results.parquet")
+RESULTS_JSON = join(RESULTS_DIR, "cobot-all_experiments_results.json")
 
-UCI_DATASET_ID = 172
-DATASET_SUBSET = "8hr"
-TARGET_COLUMN = "Class"
-TIMESTAMP_COLUMN = "Date"
+# Caminhos locais apontando para os novos CSVs gerados pelo script de preparação
+PATH_TRAIN = r'/data/ur3-cobotops/cobotops_train_80.csv'
+PATH_TEST  = r'/data/ur3-cobotops/cobotops_test_20.csv'
+
+TARGET_COLUMN = "Robot_ProtectiveStop"
+TIMESTAMP_COLUMN = "Timestamp"
 CATEGORICAL_FEATURES = []
 
 SEQUENCE_LENGTHS = [10, 20, 30, 40, 50]
 HIDDEN_SIZES = [10, 32]
 NUM_LAYERS_OPTIONS = [1, 2]
 ITERATIONS = 10  
-TEST_PROPORTION = 0.2
 
 SVM_C_GRID = [0.1, 1.0, 10.0]
 SVM_GAMMA_GRID = ["scale", "auto"]
@@ -49,45 +46,20 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"Dispositivo selecionado para o treino das redes: {DEVICE}\n")
 
 # --------------------------------------------------------------------------- #
-# 1. Carregamento e Pré-processamento dos Dados (Inspirado no código UCI)
+# 1. Carregamento das Bases Já Tratadas e Binarizadas
 # --------------------------------------------------------------------------- #
-print(f"Buscando dataset UCI id={UCI_DATASET_ID} (Ozone Level Detection)...")
-ds = fetch_ucirepo(id=UCI_DATASET_ID)
 
-features = ds.data.features.reset_index(drop=True)
-targets = ds.data.targets.reset_index(drop=True)
-ids = ds.data.ids.reset_index(drop=True)
+reader_train = DataReader(PATH_TRAIN, target_columns=[TARGET_COLUMN], sep=';', quotechar='"')
+X_train, y_train = reader_train.get_X_y()
 
-# Filtrando para o subset de 8 horas conforme o pipeline padrão do dataset
-mask = ids["Dataset"] == DATASET_SUBSET
-print(f"  Filtrando para o subset '{DATASET_SUBSET}': {int(mask.sum()):,} de {len(ids):,} linhas")
+reader_test = DataReader(PATH_TEST, target_columns=[TARGET_COLUMN], sep=';', quotechar='"')
+X_test, y_test = reader_test.get_X_y()
 
-X = features.loc[mask].copy()
-y = targets.loc[mask].copy()
-dates = pd.to_datetime(ids.loc[mask, "Date"], format="%m/%d/%Y")
+# Mapeando as features numéricas restantes (garantindo que o timestamp permaneça)
+numeric_features = [c for c in X_train.columns if c not in  {TARGET_COLUMN, TIMESTAMP_COLUMN}]
 
-X[TIMESTAMP_COLUMN] = dates.values
-X = X.sort_values(TIMESTAMP_COLUMN).reset_index(drop=True)
-y = y.loc[X.index].reset_index(drop=True)
-
-# Remover linhas sem target e converter dados faltantes (NaN) pela mediana
-valid = ~y[TARGET_COLUMN].isna()
-X = X.loc[valid].reset_index(drop=True)
-y = y.loc[valid].reset_index(drop=True)
-y[TARGET_COLUMN] = y[TARGET_COLUMN].astype(int)
-
-numeric_features = [c for c in X.columns if c != TIMESTAMP_COLUMN]
-X[numeric_features] = X[numeric_features].apply(pd.to_numeric, errors="coerce")
-X[numeric_features] = X[numeric_features].fillna(X[numeric_features].median(numeric_only=True))
-
-# Divisão Cronológica (Passado / Futuro)
-past_future = PastFutureSplit(timestamp_column=TIMESTAMP_COLUMN, proportion=TEST_PROPORTION)
-past_future.fit(X, y)
-X_train, y_train, X_test, y_test = past_future.transform(X, y)
-
-print(f"  Divisão Concluída — Treino: {len(X_train):,} | Teste: {len(X_test):,}")
-print(f"  Taxa de Positivos — Treino: {y_train[TARGET_COLUMN].mean():.4f} | Teste: {y_test[TARGET_COLUMN].mean():.4f}\n")
-
+print(f"  Bases Carregadas — Treino: {len(X_train):,} | Teste: {len(X_test):,}")
+print(f"  Quantidade de Positivos — Treino: {y_train[TARGET_COLUMN].sum():,} | Teste: {y_test[TARGET_COLUMN].sum():,}\n")
 # --------------------------------------------------------------------------- #
 # 2. Loop de Experimentos Unificado
 # --------------------------------------------------------------------------- #
@@ -96,15 +68,15 @@ all_experiments = {
     'pure-lstm': {'creator': LSTM, 'params': {'val_split': 0.1}},
     'pure-gru':  {'creator': GRU, 'params': {'val_split': 0.1}},
     'hybrid':    {'creator': hybrid_rnn_svm, 'params': {
-                    'rnn_train_ratio': 0.7, 
-                    'rnn_val_ratio': 0.1, 
+                    'rnn_train_ratio': 0.7,   # Mantido 70% para consistência com o AI4I e Occupancy
+                    'rnn_val_ratio': 0.1,     
                     'svm_kernel': 'rbf'
                  }}
 }
 
 for model_key, config in all_experiments.items():
     print(f"==================================================")
-    print(f" INICIANDO EXPERIMENTOS OZONE: {model_key.upper()} ")
+    print(f" INICIANDO EXPERIMENTOS COBOT: {model_key.upper()} ")
     print(f"==================================================")
     
     for seq_len in SEQUENCE_LENGTHS:
@@ -119,11 +91,11 @@ for model_key, config in all_experiments.items():
         for hidden_size, num_layers, *extra in grid_values:
             for i in range(ITERATIONS):
                 
-                # Montando o run_id com parâmetros extras no final para preservar o script de plot
+                # Montando o run_id padronizado para manter compatibilidade com seus scripts de plot
                 if model_key == "hybrid":
                     svm_C, svm_gamma = extra[0], extra[1]
                     run_id = (
-                        f"ozone-{model_key}_Layers-{num_layers}_HiddenSize-{hidden_size}"
+                        f"cobot-{model_key}_Layers-{num_layers}_HiddenSize-{hidden_size}"
                         f"_SequenceLength-{seq_len}_Iteration-{i + 1}_svmC-{svm_C}_svmGamma-{svm_gamma}"
                     )
                     grid_params = {
@@ -132,14 +104,13 @@ for model_key, config in all_experiments.items():
                     }
                 else:
                     run_id = (
-                        f"ozone-{model_key}_Layers-{num_layers}_HiddenSize-{hidden_size}"
+                        f"cobot-{model_key}_Layers-{num_layers}_HiddenSize-{hidden_size}"
                         f"_SequenceLength-{seq_len}_Iteration-{i + 1}"
                     )
                     grid_params = {}
                 
                 print(f"Rodando: {run_id}")
 
-                # Parâmetros base compartilhados do dataset Ozone
                 base_params = {
                     'target_column': TARGET_COLUMN,
                     'timestamp_column': TIMESTAMP_COLUMN,
@@ -182,4 +153,4 @@ for model_key, config in all_experiments.items():
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
-print("\nExperimentos do Ozone finalizados.")
+print("\n[FIM] Todos os experimentos do UR3 CobotOps local foram finalizados.")

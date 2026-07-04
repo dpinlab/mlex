@@ -1,21 +1,32 @@
 import sys, os
-from os.path import join, abspath
+from os.path import join, abspath, dirname
 sys.path.append(abspath(join(__file__ , "..", "..", "..", "..")))
 
 import numpy as np
 import pandas as pd
 import torch
 from mlex import RNN, LSTM, GRU, hybrid_rnn_svm, DataReader, StandardEvaluator
+from itertools import product
+
+RESULTS_DIR = dirname(__file__)
+RESULTS_PARQUET = join(RESULTS_DIR, "occupancy-all_experiments_results.parquet")
+RESULTS_JSON = join(RESULTS_DIR, "occupancy-all_experiments_results.json")
 
 path_train = r'/data/occupancy/datatraining.txt'
 path_test  = r'/data/occupancy/datatest.txt'
 
 dataset_name = "occupancy"
 target_column = 'Occupancy'
+timestamp_column = 'date'
 
-num_layers = 1
-hidden_size = 10
+sequence_lengths = [10, 20, 30, 40, 50]
+hidden_sizes = [10, 32]
+num_layers_options = [1, 2]
 iterations = 10
+
+
+svm_C_grid = [0.1, 1.0, 10.0]
+svm_gamma_grid = ["scale", "auto"]
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"Dispositivo selecionado para o treino: {device}")
@@ -26,7 +37,6 @@ reader_train = DataReader(
     target_columns=[target_column],
     sep=",",          
     quotechar='"',
-    # Seus dados usam separação por vírgula no txt/csv do UCI
 )
 X_train, y_train = reader_train.get_X_y()
 
@@ -48,14 +58,12 @@ all_experiments = {
     'hybrid':    {'creator': hybrid_rnn_svm, 'params': {
                     'rnn_train_ratio': 0.7, 
                     'rnn_val_ratio': 0.1, 
-                    'svm_kernel': 'rbf', 
-                    'svm_C': 1.0, 
-                    'svm_gamma': 'scale'
+                    'svm_kernel': 'rbf'
                  }}
 }
 
-# Janelas temporais de minutos para avaliar no escritório
-sequence_lengths = [10, 20, 30, 40, 50]
+numeric_features = ['Temperature', 'Humidity', 'Light', 'CO2', 'HumidityRatio']
+categorical_features = []
 
 for model_key, config in all_experiments.items():
     print(f"\n==================================================")
@@ -63,58 +71,80 @@ for model_key, config in all_experiments.items():
     print(f"==================================================")
     
     for seq_len in sequence_lengths:
-        print(f"Sequence Length: {seq_len}")
-        for i in range(iterations):
-            
-            # Formato de run_id idêntico ao que o nosso script de plotagem espera ler
-            run_id = f"{dataset_name}-{model_key}_Layers-{num_layers}_HiddenSize-{hidden_size}_SequenceLength-{seq_len}_Iteration-{i+1}"
+        print(f"\n--- Sequence Length: {seq_len} ---")
+        
+        # Define a combinação da grade dinamicamente conforme a arquitetura
+        if model_key == "hybrid":
+            grid_values = list(product(hidden_sizes, num_layers_options, svm_C_grid, svm_gamma_grid))
+        else:
+            grid_values = list(product(hidden_sizes, num_layers_options))
 
-            base_params = {
-                'target_column': target_column,
-                'timestamp_column': 'date', # Coluna temporal nativa do UCI Occupancy
-                'numeric_features': ['Temperature', 'Humidity', 'Light', 'CO2', 'HumidityRatio'],
-                'categorical_features': [], # Este dataset não possui colunas categóricas adicionais
-                'filter_dict': {}, # Sem filtros estáticos iniciais
-                'device': device,
-                'seq_length': seq_len,
-                'hidden_size': hidden_size,
-                'num_layers': num_layers,
-                'batch_size': 32,  
-                'epochs': 30,
-                'patience': 5,
-            }
+        for hidden_size, num_layers, *extra in grid_values:
+            for i in range(iterations):
+                
+                # Mantendo os parâmetros novos do SVM depois do Iteration para preservar seu plot
+                if model_key == "hybrid":
+                    svm_C, svm_gamma = extra[0], extra[1]
+                    run_id = (
+                        f"{dataset_name}-{model_key}_Layers-{num_layers}_HiddenSize-{hidden_size}"
+                        f"_SequenceLength-{seq_len}_Iteration-{i + 1}_svmC-{svm_C}_svmGamma-{svm_gamma}"
+                    )
+                    grid_params = {
+                        "svm_C": svm_C,
+                        "svm_gamma": svm_gamma,
+                    }
+                else:
+                    run_id = (
+                        f"{dataset_name}-{model_key}_Layers-{num_layers}_HiddenSize-{hidden_size}"
+                        f"_SequenceLength-{seq_len}_Iteration-{i + 1}"
+                    )
+                    grid_params = {}
+                
+                print(f"Rodando: {run_id}")
 
-            full_params = {**base_params, **config['params']}
-            model = config['creator'](**full_params)
+                base_params = {
+                    'target_column': target_column,
+                    'timestamp_column': timestamp_column,
+                    'numeric_features': numeric_features,
+                    'categorical_features': categorical_features,
+                    'device': device,
+                    'seq_length': seq_len,
+                    'hidden_size': hidden_size,
+                    'num_layers': num_layers,
+                    'batch_size': 32,  
+                    'epochs': 30,
+                    'patience': 5,
+                }
 
-            # Treinamento
-            model.fit(X_train, y_train)
+                full_params = {**base_params, **config['params'], **grid_params}
+                model = config['creator'](**full_params)
 
-            # Predição
-            y_pred_score = model.predict_proba(X_test)
+                # Treinamento
+                model.fit(X_train, y_train)
 
-            # Avaliação com salvamento padronizado
-            evaluator = StandardEvaluator(
-                run_id,
-                threshold=model.threshold,
-            )
-            evaluator.evaluate(
-                np.array(y_test.values.flatten()),
-                [],
-                y_pred_score,
-            )
+                # Predição
+                y_pred_score = model.predict_proba(X_test)
 
-            print(evaluator.summary())
-            print('\n')
+                # Avaliação com salvamento padronizado
+                evaluator = StandardEvaluator(
+                    run_id,
+                    threshold=model.threshold,
+                )
+                evaluator.evaluate(
+                    np.array(y_test.values.flatten()),
+                    [],
+                    y_pred_score,
+                )
 
-            # Salvando os resultados na estrutura mapeada pelo script de plotagem unificado
-            output_file = f"{dataset_name}-all_experiments_results"
-            evaluator.save(f"{output_file}.parquet")
-            evaluator.save(f"{output_file}.json")
+                print(evaluator.summary())
 
-            del model
-            del evaluator
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+                # Salvando usando caminhos absolutos e o RESULTS_DIR do script atual
+                evaluator.save(RESULTS_PARQUET)
+                evaluator.save(RESULTS_JSON)
+
+                del model
+                del evaluator
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
 print(f"\n[FIM] Todos os experimentos do {dataset_name.upper()} foram executados com sucesso!")
