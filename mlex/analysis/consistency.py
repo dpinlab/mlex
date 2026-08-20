@@ -26,7 +26,7 @@ class IntraTimestamp:
                     `abs(in_degree(u) - out_degree(u)) > 1`
                     - Set `A_2` contains the indices of transaction flows that belong to a balance node `v` with
                     `abs(in_degree(v) - out_degree(v)) <= 1`
-                - `D` is a set of tuples `set(Tuple(int))` of the indices ordering of Eulerian components of a transaction flows, within a inconsistent timestamp
+                - `D` is a list of tuples `list(Tuple(int))` of the indices ordering of Eulerian components of a transaction flows, within a inconsistent timestamp
         """
 
         if not T:
@@ -69,14 +69,14 @@ class IntraTimestamp:
 
     @classmethod
     def __inconsistent_components(cls, G):
-        A, D = set(), set()
+        A, D = set(), list()
         for Z_k in [
             G.subgraph(Z_k).copy() for Z_k in nx.weakly_connected_components(G)
         ]:
             if all([Z_k.in_degree[node] == Z_k.out_degree[node] for node in Z_k]):
                 s = next(iter(Z_k))
                 C = Trail.eulerian_circuit(G=Z_k, s=s)
-                D.add(tuple(C))
+                D.append(tuple(C))
             else:
                 O = {
                     (u, v)
@@ -94,7 +94,7 @@ class IntraTimestamp:
                     while C.head.value != q:
                         C.right_shift()
                     C.remove(key=q, key_selector=lambda node: node.value)
-                    D.add(tuple(C))
+                    D.append(tuple(C))
                 else:
                     A_1 = frozenset(
                         [
